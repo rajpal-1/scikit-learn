@@ -708,6 +708,27 @@ def if_safe_multiprocessing_with_blas(func):
     return run_test
 
 
+def if_numpydoc(func):
+    """
+    Decorator to check if numpydoc is available and python version is
+    atleast 3.5.
+    Meant for testing docstrings.
+    """
+    @wraps(func)
+    def run_test(*args, **kwargs):
+        try:
+            import numpydoc  # noqa
+            numpydoc.docscrape.NumpyDocString("Test Docstring")
+            assert sys.version_info >= (3, 5)
+        except (ImportError, AssertionError):
+            raise SkipTest("numpydoc is required to test the docstrings, "
+                           "as well as python version >= 3.5")
+        else:
+            return func(*args, **kwargs)
+
+    return run_test
+
+
 def clean_warning_registry():
     """Safe way to reset warnings."""
     warnings.resetwarnings()
@@ -892,3 +913,161 @@ def check_docstring_parameters(func, doc=None, ignore=None, class_name=None):
             if n1 != n2:
                 incorrect += [func_name + ' ' + n1 + ' != ' + n2]
     return incorrect
+
+
+def _check_matching_docstrings(doc_list, type_dict, type_name, object_name,
+                               include, exclude):
+    """
+    Checks if the docstring element, Parameter/Attribute/Return, having the
+    same name as a key in ``type_dict``, also has the same type definition and
+    description as that in ``type_dict``.
+
+    If a matching key is not found in ``type_dict``, the docstring element is
+    added in it with it's name as the key and value being a dictionary of it's
+    type definition and description.
+
+    """
+    for name, type_definition, description in doc_list:
+        if exclude is not None and name in exclude:
+            pass
+        elif include is not True and name not in include:
+            pass
+        else:
+            # remove all whitespaces
+            type_definition = " ".join(type_definition.split())
+            description = [" ".join(s.split()) for s in description]
+            description = list(filter(None, description))
+
+            if name in type_dict:
+                u_dict = type_dict[name]
+                msg1 = (type_name + " '" + name + "' of '" + object_name +
+                        "' has inconsistent type definition with that of '" +
+                        u_dict['object'] + "'.")
+                msg2 = (type_name + " '" + name + "' of '" + object_name +
+                        "' has inconsistent description with that of '" +
+                        u_dict['object'] + "'.")
+
+                assert u_dict['type_definition'] == type_definition, msg1
+                assert u_dict['description'] == description, msg2
+            else:
+                add_dict = {'type_definition': type_definition,
+                            'description': description,
+                            'object': object_name}
+                type_dict[name] = add_dict
+
+    return type_dict
+
+
+def assert_consistent_docs(objects,
+                           include_params=True, exclude_params=None,
+                           include_attribs=True, exclude_attribs=None,
+                           include_returns=True, exclude_returns=None):
+    """
+    Checks consistency between the docstring of ``objects``.
+
+    Checks if types and descriptions of Parameters/Attributes/Returns are
+    identical across ``objects``. Raises AssertionError if found otherwise.
+
+    Parameters
+    ----------
+    objects : collection
+        The collection (list, set etc.) of objects that may be either
+        ``NumpyDocString`` instances or objects (classes, functions,
+        descriptors) with docstrings that can be parsed by numpydoc.
+
+    include_params : collection, False or True (default)
+        Collection of Parameters to be included. True, for including all
+        parameters.
+
+    exclude_params : collection or None (default)
+        Collection of Parameters to be excluded. Set only if
+        ``include_params`` is True.
+
+    include_attribs : collection, False or True (default)
+        Collection of Attributes to be included. True, for including all
+        attributes.
+
+    exclude_attribs : collection or None (default)
+        Collection of Attributes to be excluded. Set only if
+        ``include_attribs`` is True.
+
+    include_returns : collection, False or True (default)
+        Collection of Returns to be included. True, for including all returns.
+
+    exclude_returns : collection or None (default)
+        Collection of Returns to be excluded. Set only if ``include_returns``
+        is True.
+
+    Notes
+    -----
+    This function asserts that any Parameters/Returns/Attributes entries having
+    the same name among ``objects`` docstrings also have the same type
+    specification and description.
+    It compares only those entries having the same name in the docstring, does
+    no comparison if an entry in a docstring is unique.
+
+    Examples
+    --------
+    >>> from sklearn.metrics import (mean_absolute_error, mean_squared_error,
+    ... median_absolute_error)
+    >>> from sklearn.utils.testing import assert_consistent_docs
+    ... # doctest: +SKIP
+    >>> assert_consistent_docs([mean_absolute_error, mean_squared_error],
+    ... include_params=['y_true', 'y_pred', 'sample_weight'],
+    ... include_attribs=False, include_returns=False)  # doctest: +SKIP
+    >>> assert_consistent_docs([median_absolute_error, mean_squared_error],
+    ... include_params=True, include_attribs=False, include_returns=False)
+    ... # doctest: +NORMALIZE_WHITESPACE, +SKIP
+    Traceback (most recent call last):
+        ...
+    AssertionError: Parameter 'y_true' of 'mean_squared_error' has inconsistent
+    type definition with that of 'median_absolute_error'.
+
+    """
+    if ((exclude_params and include_params is not True) or
+       (exclude_attribs and include_attribs is not True) or
+       (exclude_returns and include_returns is not True)):
+        raise TypeError("exclude_ argument can be set only if include_"
+                        " argument is True.")
+
+    from numpydoc import docscrape
+
+    # Dictionary of all different Parameters/Attributes/Returns found
+    param_dict = {}
+    attrib_dict = {}
+    return_dict = {}
+
+    i = 1  # sequence of object in the collection
+    for u in objects:
+        if isinstance(u, docscrape.NumpyDocString):
+            doc = u
+            name = 'Object '+str(i)
+        elif (inspect.isdatadescriptor(u) or inspect.isfunction(u) or
+              inspect.isclass(u)):
+            doc = docscrape.NumpyDocString(inspect.getdoc(u))
+            name = u.__name__
+        else:
+            raise TypeError("Object passed not a Function, Class, "
+                            "Descriptor or NumpyDocString.")
+        i = i + 1
+
+        # check for inconsistency in Parameters
+        if include_params is not False:
+            param_dict = _check_matching_docstrings(doc['Parameters'],
+                                                    param_dict, 'Parameter',
+                                                    name, include_params,
+                                                    exclude_params)
+
+        # check for inconsistency in Attributes
+        if include_attribs is not False:
+            attrib_dict = _check_matching_docstrings(doc['Attributes'],
+                                                     attrib_dict, 'Attribute',
+                                                     name, include_attribs,
+                                                     exclude_attribs)
+
+        # check for inconsistency in Returns
+        if include_returns is not False:
+            return_dict = _check_matching_docstrings(doc['Returns'],
+                                                     return_dict, 'Return',
+                                                     name, include_returns,
+                                                     exclude_returns)

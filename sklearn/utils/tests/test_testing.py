@@ -1,5 +1,6 @@
 import warnings
 import unittest
+import inspect
 import sys
 import numpy as np
 from scipy import sparse
@@ -16,6 +17,7 @@ from sklearn.utils.testing import (
     assert_warns,
     assert_no_warnings,
     assert_equal,
+    assert_consistent_docs,
     set_random_state,
     assert_raise_message,
     ignore_warnings,
@@ -23,7 +25,7 @@ from sklearn.utils.testing import (
     assert_allclose_dense_sparse,
     assert_raises_regex)
 
-from sklearn.utils.testing import SkipTest
+from sklearn.utils.testing import if_numpydoc, SkipTest
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
@@ -491,3 +493,147 @@ def test_check_docstring_parameters():
          'type definition for param: "c " (type definition was "")',
          'sklearn.utils.tests.test_testing.f_check_param_definition There was '
          'no space between the param name and colon ("d:int")'])
+
+
+def func_doc1(y_true, y_pred, sample_weight):
+    """Dummy function for docstring testing.
+
+    Parameters
+    ----------
+    y_true : 1d array-like
+        Ground truth (correct) target values.
+
+    y_pred : 1d array-like
+        Estimated targets as returned by a classifier.
+
+    sample_weight : array-like of shape = [n_samples], optional
+        Sample weights.
+
+    Returns
+    -------
+    fbeta_score : float or array of float, shape = [n_unique_labels]
+        F-beta score of the positive class in binary classification.
+
+    precision : float or array of float, shape = [n_unique_labels]
+        Precision values.
+
+    recall : float or array of float, shape = [n_unique_labels]
+
+    """
+    pass
+
+
+def func_doc2(y_true, y_pred, sample_weight):
+    """Dummy function for docstring testing.
+
+    Parameters
+    ----------
+    y_true : 1d array-like
+        Ground truth (correct) target values.
+
+    y_pred : 1d array-like
+        Estimated targets as returned by a classifier.
+
+    sample_weight : array-like of shape = [n_samples], optional
+
+    Returns
+    -------
+    fbeta_score : float or array of float, shape = [n_unique_labels]
+        F-beta score of the positive class in binary classification.
+
+    precision : float or array of float
+        Precision values.
+
+    """
+    pass
+
+
+@if_numpydoc
+def test_assert_consistent_docs():
+    # Testing invalid object type
+    assert_raises(TypeError, assert_consistent_docs, ["Object1", "Object2"])
+
+    # Testing with dummy functions
+    assert_consistent_docs([func_doc1, func_doc2],
+                           include_params=['y_true', 'y_pred'],
+                           include_returns=False)
+
+    from numpydoc import docscrape  # using NumpyDocString object for tests
+
+    doc1 = docscrape.NumpyDocString(inspect.getdoc(func_doc1))
+    doc2 = docscrape.NumpyDocString(inspect.getdoc(func_doc2))
+
+    # Test error messages on mismatch
+    error_msg1 = ("Parameter 'sample_weight' of 'Object 2' has inconsistent"
+                  " description with that of 'Object 1'.")
+    assert_raise_message(AssertionError, error_msg1, assert_consistent_docs,
+                         [doc1, doc2], include_params=['sample_weight'],
+                         include_returns=False)  # description mismatch
+
+    error_msg2 = ("Return 'precision' of 'Object 2' has inconsistent type"
+                  " definition with that of 'Object 1'.")
+    assert_raise_message(AssertionError, error_msg2, assert_consistent_docs,
+                         [doc1, doc2], include_returns=['precision'],
+                         include_params=False)  # type definition mismatch
+
+    doc3 = doc1  # both doc1 and doc3 return 'recall' whereas doc2 does not
+    assert_consistent_docs([doc1, doc2, doc3],
+                           include_returns=['fbeta_score', 'recall'],
+                           include_attribs=False, include_params=False)
+
+    # Test for incorrect usage
+    test_list1 = doc1['Parameters']
+    test_list2 = doc2['Parameters']
+    doc1['Parameters'] = doc2['Parameters'] = []
+    doc1['Returns'] = doc2['Returns'] = []
+    type_list = ['Parameters', 'Attributes', 'Returns']
+    include_list = ['include_params', 'include_attribs', 'include_returns']
+    exclude_list = ['exclude_params', 'exclude_attribs', 'exclude_returns']
+
+    for typ, include, exclude in zip(type_list, include_list, exclude_list):
+        doc1[typ] = test_list1
+        doc2[typ] = test_list2
+
+        # Passing lists to both include_ and exclude_ arguments
+        kwargs = {include: ['sample_weight'], exclude: ['sample_weight']}
+        assert_raises(TypeError, assert_consistent_docs, [doc1, doc2],
+                      **kwargs)
+
+        # Passing list to exclude_ argument when include_ is set to False
+        kwargs = {include: False, exclude: ['sample_weight']}
+        assert_raises(TypeError, assert_consistent_docs, [doc1, doc2],
+                      **kwargs)
+        doc1[typ] = doc2[typ] = []
+
+
+@if_numpydoc
+def test_precedence_assert_consistent_docs():
+    # Test order of error reporting
+    from numpydoc import docscrape
+
+    doc1 = docscrape.NumpyDocString(inspect.getdoc(func_doc1))
+    doc2 = docscrape.NumpyDocString(inspect.getdoc(func_doc2))
+
+    doc1['Attributes'] = doc1['Returns'] = doc1['Parameters']
+    doc2['Attributes'] = doc2['Returns'] = doc2['Parameters']
+
+    # Mismatch in Parameter reported first
+    error_msg = ("Parameter 'sample_weight' of 'Object 2' has inconsistent"
+                 " description with that of 'Object 1'.")
+    assert_raise_message(AssertionError, error_msg, assert_consistent_docs,
+                         [doc1, doc2], include_params=True,
+                         include_returns=True, include_attribs=True)
+
+    # Mismatch in Attribute reported second
+    error_msg = ("Attribute 'sample_weight' of 'Object 2' has inconsistent"
+                 " description with that of 'Object 1'.")
+    assert_raise_message(AssertionError, error_msg, assert_consistent_docs,
+                         [doc1, doc2], include_params=False,
+                         include_returns=True, include_attribs=True)
+
+    # Mismatch in Returns reported last
+    error_msg = ("Return 'sample_weight' of 'Object 2' has inconsistent"
+                 " description with that of 'Object 1'.")
+    assert_raise_message(AssertionError, error_msg, assert_consistent_docs,
+                         [doc1, doc2], include_params=False,
+                         include_returns=True, include_attribs=False)
