@@ -338,6 +338,10 @@ Changelog
   `KeyError` when using `kernel="precomputed"`.
   :pr:`14706` by :user:`Venkatachalam N <venkyyuvy>`.
 
+- |Fix| :class:`ensemble.IsolationForest` now runs parallel jobs
+  during :term:`predict`. :pr:`14001` by :user:`Sérgio Pereira
+  <sergiormpereira>`.
+
 :mod:`sklearn.linear_model`
 ...........................
 

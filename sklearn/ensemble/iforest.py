@@ -2,7 +2,10 @@
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 # License: BSD 3 clause
 
+from distutils.version import LooseVersion
 
+import joblib
+from joblib import Parallel, delayed
 import numbers
 import numpy as np
 from scipy.sparse import issparse
@@ -20,6 +23,7 @@ from ..utils.validation import check_is_fitted, _num_samples
 from ..base import OutlierMixin
 
 from .bagging import BaseBagging
+from .base import _partition_estimators
 
 __all__ = ["IsolationForest"]
 
@@ -412,37 +416,56 @@ class IsolationForest(OutlierMixin, BaseBagging):
         return scores
 
     def _compute_score_samples(self, X, subsample_features):
-        """Compute the score of each samples in X going through the extra trees.
+        """Compute the score of each samples in X going through the extra
+        trees.
 
         Parameters
         ----------
         X : array-like or sparse matrix
-
         subsample_features : bool,
             whether features should be subsampled
+
+        Returns
+        -------
+        ndarray
+            The anomaly scores for each sample
         """
-        n_samples = X.shape[0]
+        def get_depths(_X, trees, trees_features, _subsample_features):
+            n = _X.shape[0]
+            batch_depths = np.zeros(n, order="f")
 
-        depths = np.zeros(n_samples, order="f")
+            for tree, features in zip(trees, trees_features):
+                X_subset = _X[:, features] if _subsample_features else _X
 
-        for tree, features in zip(self.estimators_, self.estimators_features_):
-            X_subset = X[:, features] if subsample_features else X
+                leaves_index = tree.apply(X_subset)
+                node_indicator = tree.decision_path(X_subset)
+                n_samples_leaf = tree.tree_.n_node_samples[leaves_index]
 
-            leaves_index = tree.apply(X_subset)
-            node_indicator = tree.decision_path(X_subset)
-            n_samples_leaf = tree.tree_.n_node_samples[leaves_index]
+                batch_depths += np.ravel(node_indicator.sum(axis=1)) \
+                    + _average_path_length(n_samples_leaf) - 1.0
 
-            depths += (
-                np.ravel(node_indicator.sum(axis=1))
-                + _average_path_length(n_samples_leaf)
-                - 1.0
-            )
+            return batch_depths
 
-        scores = 2 ** (
-            -depths
-            / (len(self.estimators_)
-               * _average_path_length([self.max_samples_]))
-        )
+        n_jobs, n_estimators, starts = _partition_estimators(
+            self.n_estimators, self.n_jobs)
+
+        old_joblib = LooseVersion(joblib.__version__) < LooseVersion('0.12')
+        check_pickle = False if old_joblib else None
+
+        par_exec = Parallel(n_jobs=n_jobs, **self._parallel_args())
+        par_results = par_exec(
+            delayed(get_depths, check_pickle=check_pickle)(
+                _X=X, trees=self.estimators_[starts[i]: starts[i + 1]],
+                trees_features=self.estimators_features_[
+                               starts[i]: starts[i + 1]],
+                _subsample_features=subsample_features)
+            for i in range(n_jobs))
+
+        depths = np.sum(par_results, axis=0)
+
+        scores = 2 ** (-depths / (len(self.estimators_)
+                                  * _average_path_length([self.max_samples_])))
+
         return scores
 
 
