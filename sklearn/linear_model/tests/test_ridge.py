@@ -21,6 +21,7 @@ from sklearn import datasets
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import make_scorer
 from sklearn.metrics import get_scorer
+from sklearn.metrics import r2_score
 
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import ridge_regression
@@ -36,7 +37,9 @@ from sklearn.linear_model._ridge import _X_CenterStackOp
 from sklearn.datasets import make_regression
 
 from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import KFold, GroupKFold, cross_val_predict
+from sklearn.model_selection import KFold
+from sklearn.model_selection import LeaveOneOut
+from sklearn.model_selection import cross_val_predict
 
 from sklearn.utils import check_random_state
 from sklearn.datasets import make_multilabel_classification
@@ -491,66 +494,6 @@ def test_ridge_loo_cv_asym_scoring():
     assert gcv_ridge.alpha_ == pytest.approx(loo_ridge.alpha_)
     assert_allclose(gcv_ridge.coef_, loo_ridge.coef_, rtol=1e-3)
     assert_allclose(gcv_ridge.intercept_, loo_ridge.intercept_, rtol=1e-3)
-
-
-@pytest.mark.parametrize('gcv_mode', ['svd', 'eigen'])
-@pytest.mark.parametrize('X_constructor', [np.asarray, sp.csr_matrix])
-@pytest.mark.parametrize('n_features', [8, 20])
-@pytest.mark.parametrize('y_shape, fit_intercept, noise',
-                         [((11,), True, 1.),
-                          ((11, 1), True, 20.),
-                          ((11, 3), True, 150.),
-                          ((11, 3), False, 30.)])
-def test_ridge_gcv_sample_weights(
-        gcv_mode, X_constructor, fit_intercept, n_features, y_shape, noise):
-    alphas = [1e-3, .1, 1., 10., 1e3]
-    rng = np.random.RandomState(0)
-    n_targets = y_shape[-1] if len(y_shape) == 2 else 1
-    X, y = _make_sparse_offset_regression(
-        n_samples=11, n_features=n_features, n_targets=n_targets,
-        random_state=0, shuffle=False, noise=noise)
-    y = y.reshape(y_shape)
-
-    sample_weight = 3 * rng.randn(len(X))
-    sample_weight = (sample_weight - sample_weight.min() + 1).astype(int)
-    indices = np.repeat(np.arange(X.shape[0]), sample_weight)
-    sample_weight = sample_weight.astype(float)
-    X_tiled, y_tiled = X[indices], y[indices]
-
-    cv = GroupKFold(n_splits=X.shape[0])
-    splits = cv.split(X_tiled, y_tiled, groups=indices)
-    kfold = RidgeCV(
-        alphas=alphas, cv=splits, scoring='neg_mean_squared_error',
-        fit_intercept=fit_intercept)
-    # ignore warning from GridSearchCV: FutureWarning: The default
-    # of the `iid` parameter will change from True to False in version 0.22
-    # and will be removed in 0.24
-    with ignore_warnings(category=FutureWarning):
-        kfold.fit(X_tiled, y_tiled)
-
-    ridge_reg = Ridge(alpha=kfold.alpha_, fit_intercept=fit_intercept)
-    splits = cv.split(X_tiled, y_tiled, groups=indices)
-    predictions = cross_val_predict(ridge_reg, X_tiled, y_tiled, cv=splits)
-    kfold_errors = (y_tiled - predictions)**2
-    kfold_errors = [
-        np.sum(kfold_errors[indices == i], axis=0) for
-        i in np.arange(X.shape[0])]
-    kfold_errors = np.asarray(kfold_errors)
-
-    X_gcv = X_constructor(X)
-    gcv_ridge = RidgeCV(
-        alphas=alphas, store_cv_values=True,
-        gcv_mode=gcv_mode, fit_intercept=fit_intercept)
-    gcv_ridge.fit(X_gcv, y, sample_weight=sample_weight)
-    if len(y_shape) == 2:
-        gcv_errors = gcv_ridge.cv_values_[:, :, alphas.index(kfold.alpha_)]
-    else:
-        gcv_errors = gcv_ridge.cv_values_[:, alphas.index(kfold.alpha_)]
-
-    assert kfold.alpha_ == pytest.approx(gcv_ridge.alpha_)
-    assert_allclose(gcv_errors, kfold_errors, rtol=1e-3)
-    assert_allclose(gcv_ridge.coef_, kfold.coef_, rtol=1e-3)
-    assert_allclose(gcv_ridge.intercept_, kfold.intercept_, rtol=1e-3)
 
 
 @pytest.mark.parametrize('mode', [True, 1, 5, 'bad', 'gcv'])
@@ -1247,3 +1190,101 @@ def test_ridge_sag_with_X_fortran():
     X = X[::2, :]
     y = y[::2]
     Ridge(solver='sag').fit(X, y)
+
+
+@pytest.mark.parametrize("fit_intercept", [True, False])
+@pytest.mark.parametrize("use_sample_weight", [True, False])
+@pytest.mark.parametrize("multioutput", [True, False])
+def test_ridgecv_default_scorer_consistency(fit_intercept, use_sample_weight,
+                                            multioutput):
+    if multioutput:
+        X, y = make_regression(n_samples=10, n_features=5,
+                               n_targets=3, random_state=0)
+    else:
+        X, y = make_regression(n_samples=10, n_features=5, random_state=0)
+    if use_sample_weight:
+        rng = np.random.RandomState(0)
+        sample_weight = rng.rand(X.shape[0])
+    else:
+        sample_weight = None
+    alphas = [0.1, 1, 10]
+
+    clf1 = RidgeCV(
+        fit_intercept=fit_intercept, scoring=None,
+        store_cv_values=True, alphas=alphas
+    )
+    clf1.fit(X, y, sample_weight=sample_weight)
+
+    # check consistency between RidgeCV(scoring=None) and
+    # RidgeCV(scoring="neg_mean_squared_error")
+    clf2 = RidgeCV(
+        fit_intercept=fit_intercept, scoring="neg_mean_squared_error",
+        store_cv_values=True, alphas=alphas
+    )
+    clf2.fit(X, y, sample_weight=sample_weight)
+    assert clf1.alpha_ == pytest.approx(clf2.alpha_)
+    assert clf1.best_score_ == pytest.approx(clf2.best_score_)
+    assert_array_almost_equal(clf1.coef_, clf2.coef_)
+    assert_array_almost_equal(clf1.intercept_, clf2.intercept_)
+    if multioutput:
+        cv_results_1 = clf1.cv_values_[:, :, alphas.index(clf1.alpha_)]
+        cv_results_2 = clf2.cv_values_[:, :, alphas.index(clf2.alpha_)]
+    else:
+        cv_results_1 = clf1.cv_values_[:, alphas.index(clf1.alpha_)]
+        cv_results_2 = clf2.cv_values_[:, alphas.index(clf2.alpha_)]
+    assert_array_almost_equal(cv_results_1, (y - cv_results_2) ** 2)
+    assert (clf1.best_score_ ==
+            pytest.approx(-mean_squared_error(y, cv_results_2)))
+
+    # check consistency between RidgeCV and GridSearCV
+    # this is true for specific scorer
+    clf2 = GridSearchCV(Ridge(fit_intercept=fit_intercept), {"alpha": alphas},
+                        scoring="neg_mean_squared_error", cv=LeaveOneOut())
+    clf2.fit(X, y, sample_weight=sample_weight)
+    assert clf1.alpha_ == pytest.approx(clf2.best_params_["alpha"])
+    assert clf1.best_score_ == pytest.approx(clf2.best_score_)
+    assert_array_almost_equal(clf1.coef_, clf2.best_estimator_.coef_)
+    assert_array_almost_equal(clf1.intercept_, clf2.best_estimator_.intercept_)
+
+    # check consistency between RidgeCV and cross_val_predict
+    # this is true for arbitrary scorer
+    ridge = Ridge(alpha=clf1.alpha_, fit_intercept=fit_intercept)
+    loo_pred = cross_val_predict(ridge, X, y, cv=LeaveOneOut(),
+                                 fit_params={"sample_weight": sample_weight})
+    assert_array_almost_equal(loo_pred, cv_results_2)
+
+
+@pytest.mark.parametrize("fit_intercept", [True, False])
+@pytest.mark.parametrize("use_sample_weight", [True, False])
+@pytest.mark.parametrize("multioutput", [True, False])
+def test_ridgecv_custom_scorer_consistency(fit_intercept, use_sample_weight,
+                                           multioutput):
+    if multioutput:
+        X, y = make_regression(n_samples=10, n_features=5,
+                               n_targets=3, random_state=0)
+    else:
+        X, y = make_regression(n_samples=10, n_features=5, random_state=0)
+    if use_sample_weight:
+        rng = np.random.RandomState(0)
+        sample_weight = rng.rand(X.shape[0])
+    else:
+        sample_weight = None
+
+    alphas = [0.1, 1, 10]
+    clf = RidgeCV(
+        fit_intercept=fit_intercept, scoring="r2",
+        store_cv_values=True, alphas=alphas
+    )
+    clf.fit(X, y, sample_weight=sample_weight)
+    if multioutput:
+        cv_results = clf.cv_values_[:, :, alphas.index(clf.alpha_)]
+    else:
+        cv_results = clf.cv_values_[:, alphas.index(clf.alpha_)]
+    assert clf.best_score_ == pytest.approx(r2_score(y, cv_results))
+
+    # check consistency between RidgeCV and cross_val_predict
+    # this is true for arbitrary scorer
+    ridge = Ridge(alpha=clf.alpha_, fit_intercept=fit_intercept)
+    loo_pred = cross_val_predict(ridge, X, y, cv=LeaveOneOut(),
+                                 fit_params={"sample_weight": sample_weight})
+    assert_array_almost_equal(loo_pred, cv_results)
