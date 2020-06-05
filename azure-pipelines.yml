@@ -167,6 +167,7 @@ jobs:
         BLAS: 'mkl'
         NUMPY_VERSION: '*'
         SCIPY_VERSION: '*'
+        PANDAS_VERSION: '*'
         CYTHON_VERSION: '*'
         PILLOW_VERSION: '*'
         PYTEST_VERSION: '*'
