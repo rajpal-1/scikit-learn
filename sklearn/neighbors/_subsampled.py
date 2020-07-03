@@ -1,7 +1,7 @@
 """Subsampled neighbors transformer"""
 
 # Author: Jennifer Jang <j.jang42@gmail.com>
-#                 Heinrich Jiang <heinrichj@google.com>
+#         Heinrich Jiang <heinrichj@google.com>
 #
 # License: BSD 3 clause
 
