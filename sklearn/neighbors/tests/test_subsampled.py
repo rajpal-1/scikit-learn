@@ -45,7 +45,7 @@ def test_sample_toy_fit_sparse_transform_sparse():
 
 
 def test_sample_toy_fit_sparse_transform_nonsparse():
-    # Fit with sparse, test with n2on-sparse
+    # Fit with sparse, test with non-sparse
     n = SubsampledNeighborsTransformer(0.9, random_state=2)
     expected_result = csr_matrix(([3.464102, 8.660254, 1.732051, 6.928203, 3.464102, 
           1.732051, 5.196152, 8.660254, 6.928203, 5.196152], ([0, 0, 1, 1, 2, 2, 2, 3, 3, 3], 
@@ -131,10 +131,10 @@ def test_iris_small_s():
 
 
 def test_iris_large_s():
-	# Large s
-	n = SubsampledNeighborsTransformer(2.0, random_state=42)
-	print(np.mean(n.fit_transform(iris.data)))
-	assert_almost_equal(np.mean(n.fit_transform(iris.data)), 2.17207055)
+    # Large s
+    n = SubsampledNeighborsTransformer(2.0, random_state=42)
+    print(np.mean(n.fit_transform(iris.data)))
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 2.17207055)
 
 
 def test_iris_no_edges():
