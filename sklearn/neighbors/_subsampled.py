@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from ..metrics.pairwise import paired_distances
+from ..metrics.pairwise import paired_distances, PAIRED_DISTANCES
 from ._base import UnsupervisedMixin
 from ..base import TransformerMixin, BaseEstimator
 from ..utils import check_random_state
@@ -60,10 +60,14 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
 
     def _fit(self, X):
-        if self.s <= 0 or self.s > 1:
-            raise ValueError("Sampling rate needs to be in (0, 1]: %s" % self.s)
+        if self.s < 0:
+            raise ValueError("Sampling rate needs to be non-negative: %s" % self.s)
+
+        if self.metric not in PAIRED_DISTANCES and not callable(self.metric):
+            raise ValueError('Unknown distance %s' % self.metric)
 
         self.s_ = self.s
+        self.metric_ = self.metric
 
         return self
 
@@ -86,8 +90,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         check_is_fitted(self)
 
-        return self.subsampled_neighbors(X, self.s_, self.metric, 
-            self.symmetric, self.random_state)
+        return self.subsampled_neighbors(X, self.s_, self.metric_, self.random_state)
 
 
     def fit_transform(self, X, y=None):
@@ -141,7 +144,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
                 The matrix is of CSR format.
         """
 
-
         from scipy.sparse import csr_matrix
 
         X = check_array(X, accept_sparse='csr')
@@ -151,21 +153,22 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         # We use sampling rate s/2 because each edge has two chances of being 
         # sampled: as (i, j) and (j, i)
-        n = int(n_samples * n_samples * s / 2.)
+        n = int(n_samples * n_samples * s / 2)
 
         # No edges sampled
         if n < 1:
-            return csr_matrix((n_samples, n_samples), dtype=np.float)
+          return csr_matrix((n_samples, n_samples), dtype=np.float)
 
         # Sample the edges with replacement
-        x = random_state.choice(np.arange(n_samples), size=n, replace=True)
-        y = random_state.choice(np.arange(n_samples), size=n, replace=True)
+        x = random_state.choice(n_samples, size=n, replace=True)
+        y = random_state.choice(n_samples, size=n, replace=True)
 
         # Edges (i, j) and (j, i) are equivalent in an undirected graph
         neighbors = np.block([[x, y], [y, x]])
 
         # Upper triangularize the matrix
-        neighbors = neighbors[:, neighbors[0, :] > neighbors[1, :]]
+        neighbors = neighbors[:, neighbors[0] > neighbors[1]]
+        print(neighbors)
 
         # Remove duplicates
         neighbors = np.unique(neighbors, axis=1)
