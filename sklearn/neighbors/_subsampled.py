@@ -32,11 +32,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         take two arrays from X as input and return a value indicating 
         the distance between them.
 
-    symmetric : boolean, default=True
-        Sample an undirected graph, where an edge from vertices i and j 
-        implies an edge from j to i, or a directed graph where no such 
-        symmetry is enforced.
-
     random_state : int, RandomState instance, default=None
         Seeds the random sampling of lists of vertices. Use an int to 
         make the randomness deterministic.
@@ -58,10 +53,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     """
 
     @_deprecate_positional_args
-    def __init__(self, s, *, metric='euclidean', symmetric=True, random_state=None):
+    def __init__(self, s, *, metric='euclidean', random_state=None):
         self.s = s
         self.metric = metric
-        self.symmetric = symmetric
         self.random_state = random_state
 
 
@@ -116,8 +110,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         return self.fit(X).transform(X)
 
 
-    def subsampled_neighbors(self, X, s, metric='euclidean', symmetric=True,
-        random_state=None):
+    def subsampled_neighbors(self, X, s, metric='euclidean', random_state=None):
         """Compute the subsampled graph of neighbors for points in X.
 
         Parameters
@@ -135,11 +128,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
             take two arrays from X as input and return a value indicating 
             the distance between them.
 
-        symmetric : boolean, default=True
-            Sample an undirected graph, where an edge from vertices i and j 
-            implies an edge from j to i, or a directed graph where no such 
-            symmetry is enforced.
-
         random_state : int, RandomState instance, default=None
             Seeds the random sampling of lists of vertices. Use an int to 
             make the randomness deterministic.
@@ -153,39 +141,43 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
                 The matrix is of CSR format.
         """
 
-        from scipy.sparse import csr_matrix, triu
+
+        from scipy.sparse import csr_matrix
 
         X = check_array(X, accept_sparse='csr')
         random_state = check_random_state(random_state)
 
         n_samples = X.shape[0]
 
-        # Sample the neighbors with replacement
-        x = random_state.choice(np.arange(n_samples), size=int(n_samples * n_samples * s), 
-            replace=True)
-        y = random_state.choice(np.arange(n_samples), size=int(n_samples * n_samples * s), 
-            replace=True)
+        # We use sampling rate s/2 because each edge has two chances of being 
+        # sampled: as (i, j) and (j, i)
+        n = int(n_samples * n_samples * s / 2.)
+
+        # No edges sampled
+        if n < 1:
+            return csr_matrix((n_samples, n_samples), dtype=np.float)
+
+        # Sample the edges with replacement
+        x = random_state.choice(np.arange(n_samples), size=n, replace=True)
+        y = random_state.choice(np.arange(n_samples), size=n, replace=True)
+
+        # Edges (i, j) and (j, i) are equivalent in an undirected graph
+        neighbors = np.block([[x, y], [y, x]])
+
+        # Upper triangularize the matrix
+        neighbors = neighbors[:, neighbors[0, :] > neighbors[1, :]]
 
         # Remove duplicates
-        neighbors = np.unique(np.column_stack((x, y)), axis=0)
+        neighbors = np.unique(neighbors, axis=1)
 
-        i = neighbors[:, 0]
-        j = neighbors[:, 1]
-
-        # Compute the edge weights for the remaining edges
-        if len(neighbors) > 0:
-            distances = paired_distances(X[i], X[j], metric=metric)
-        else:
-            distances = []
+        # Compute the edge weights
+        distances = paired_distances(X[neighbors[0]], X[neighbors[1]], metric=metric)
 
         # Create the distance matrix in CSR format 
-        neighborhood = csr_matrix((distances, (i, j)), shape=(n_samples, n_samples), 
-            dtype=np.float)
-        
-        if symmetric:
-            # Upper triangularize the matrix
-            neighborhood = triu(neighborhood)
-            # Make the matrix symmetric
-            neighborhood += neighborhood.transpose()
+        neighborhood = csr_matrix((distances, neighbors), shape=(n_samples, n_samples), 
+          dtype=np.float)
+
+        # Make the matrix symmetric
+        neighborhood += neighborhood.transpose()
 
         return neighborhood
