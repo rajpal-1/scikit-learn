@@ -153,15 +153,15 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         # We use sampling rate s/2 because each edge has two chances of being 
         # sampled: as (i, j) and (j, i)
-        n = int(n_samples * n_samples * s / 2)
+        n_edges = int(n_samples * n_samples * s / 2)
 
         # No edges sampled
-        if n < 1:
+        if n_edges < 1:
           return csr_matrix((n_samples, n_samples), dtype=np.float)
 
         # Sample the edges with replacement
-        x = random_state.choice(n_samples, size=n, replace=True)
-        y = random_state.choice(n_samples, size=n, replace=True)
+        x = random_state.choice(n_samples, size=n_edges, replace=True)
+        y = random_state.choice(n_samples, size=n_edges, replace=True)
 
         # Edges (i, j) and (j, i) are equivalent in an undirected graph
         neighbors = np.block([[x, y], [y, x]])
