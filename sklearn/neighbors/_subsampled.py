@@ -168,7 +168,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         # Upper triangularize the matrix
         neighbors = neighbors[:, neighbors[0] > neighbors[1]]
-        print(neighbors)
 
         # Remove duplicates
         neighbors = np.unique(neighbors, axis=1)
