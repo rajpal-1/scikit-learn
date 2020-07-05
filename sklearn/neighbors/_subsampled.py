@@ -86,14 +86,14 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-                Sample data.
+            Sample data.
 
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-                Non-zero entries in neighborhood[i, j] indicate an edge 
-                between X[i] and X[j] with value equal to weight of edge.
-                The matrix is of CSR format.
+            Non-zero entries in neighborhood[i, j] indicate an edge 
+            between X[i] and X[j] with value equal to weight of edge.
+            The matrix is of CSR format.
         """
 
         check_is_fitted(self)
@@ -114,9 +114,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-                Non-zero entries in neighborhood[i, j] indicate an edge 
-                between X[i] and X[j] with value equal to weight of edge.
-                The matrix is of CSR format.
+            Non-zero entries in neighborhood[i, j] indicate an edge 
+            between X[i] and X[j] with value equal to weight of edge.
+            The matrix is of CSR format.
         """
         
         return self.fit(X).transform(X)
@@ -151,9 +151,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-                Non-zero entries in neighborhood[i, j] indicate an edge 
-                between X[i] and X[j] with value equal to weight of edge.
-                The matrix is of CSR format.
+            Non-zero entries in neighborhood[i, j] indicate an edge 
+            between X[i] and X[j] with value equal to weight of edge.
+            The matrix is of CSR format.
         """
 
         from scipy.sparse import csr_matrix
