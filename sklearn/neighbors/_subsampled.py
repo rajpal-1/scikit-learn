@@ -49,8 +49,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     Notes
     -----
-    Each pair of points in X is sampled uniformly with replacement
-    with probability s, and the final distance matrix is symmetric.
+    Each pair of points in X is sampled uniformly with probability s, 
+    and the final distance matrix is symmetric.
     """
 
     @_deprecate_positional_args
