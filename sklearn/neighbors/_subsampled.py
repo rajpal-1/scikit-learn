@@ -49,10 +49,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     Notes
     -----
-    Each pair of points in X is sampled with probability s with replacement. 
-    Since (i, j) is equivalent to (j, i), we sample each unique (i, j)
-    with probability s / 2. We ensure symmetry by triangularizing the distance 
-    matrix and adding it to its transpose. 
+    Each pair of points in X is sampled uniformly with replacement
+    with probability s, and the final distance matrix is symmetric.
     """
 
     @_deprecate_positional_args
@@ -176,23 +174,17 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         x = random_state.choice(n_samples, size=n_edges, replace=True)
         y = random_state.choice(n_samples, size=n_edges, replace=True)
 
-        # Edges (i, j) and (j, i) are equivalent in an undirected graph
-        neighbors = np.block([[x, y], [y, x]])
-
-        # Upper triangularize the matrix
-        neighbors = neighbors[:, neighbors[0] > neighbors[1]]
-
         # Remove duplicates
+        neighbors = np.block([[x, y], [y, x]])
+        neighbors = neighbors[:, neighbors[0] > neighbors[1]]
         neighbors = np.unique(neighbors, axis=1)
 
-        # Compute the edge weights
         distances = paired_distances(X[neighbors[0]], X[neighbors[1]], metric=metric)
 
         if eps is not None:
           neighbors = neighbors[:, distances <= eps]
           distances = distances[distances <= eps]
 
-        # Create the distance matrix in CSR format 
         neighborhood = csr_matrix((distances, neighbors), shape=(n_samples, n_samples), dtype=np.float)
 
         # Make the matrix symmetric
