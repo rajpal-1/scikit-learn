@@ -25,6 +25,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     s : float
         Sampling probability.
 
+    eps : float, default=None
+        Neighborhood radius.
+
     metric : string or callable, default='euclidean'
         Input to paired_distances function. Can be string specified 
         in PAIRED_DISTANCES, including "euclidean", "manhattan", or 
@@ -53,19 +56,19 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     """
 
     @_deprecate_positional_args
-    def __init__(self, eps, s, *, metric='euclidean', random_state=None):
-        self.eps = eps
+    def __init__(self, s, eps=None, *, metric='euclidean', random_state=None):
         self.s = s
+        self.eps = eps
         self.metric = metric
         self.random_state = random_state
 
 
     def _fit(self, X):
-        if self.eps <= 0:
-            raise ValueError("Epsilon needs to be positive: %s" % self.eps)
-
         if self.s < 0:
             raise ValueError("Sampling rate needs to be non-negative: %s" % self.s)
+
+        if self.eps is not None and self.eps <= 0:
+            raise ValueError("Epsilon needs to be positive: %s" % self.eps)
 
         if self.metric not in PAIRED_DISTANCES and not callable(self.metric):
             raise ValueError('Unknown distance %s' % self.metric)
@@ -95,7 +98,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         check_is_fitted(self)
 
-        return self.subsampled_neighbors(X, self.eps_, self.s_, self.metric_,
+        return self.subsampled_neighbors(X, self.s_, self.eps_, self.metric_,
             self.random_state)
 
 
@@ -119,7 +122,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         return self.fit(X).transform(X)
 
 
-    def subsampled_neighbors(self, X, eps, s, metric='euclidean', random_state=None):
+    def subsampled_neighbors(self, X, s, eps=None, metric='euclidean', random_state=None):
         """Compute the subsampled graph of neighbors for points in X.
 
         Parameters
@@ -129,6 +132,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         s : float
             Sampling probability.
+
+        eps : float, default=None
+            Neighborhood radius.
 
         metric : string or callable, default='euclidean'
             Input to paired_distances function. Can be string specified 
@@ -181,9 +187,12 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         # Compute the edge weights
         distances = paired_distances(X[neighbors[0]], X[neighbors[1]], metric=metric)
 
+        if eps != None:
+          neighbors = neighbors[:, distances <= eps]
+          distances = distances[distances <= eps]
+
         # Create the distance matrix in CSR format 
-        neighborhood = csr_matrix((distances[distances <= eps], neighbors[:, distances <= eps]), 
-          shape=(n_samples, n_samples), dtype=np.float)
+        neighborhood = csr_matrix((distances, neighbors), shape=(n_samples, n_samples), dtype=np.float)
 
         # Make the matrix symmetric
         neighborhood += neighborhood.transpose()
