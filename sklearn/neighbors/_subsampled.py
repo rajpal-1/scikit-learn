@@ -27,7 +27,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     eps : float, default=None
         Neighborhood radius. Pairs of points which are at most eps apart are 
-        considered neighbors. If not given, radius is assumed to be infinity.
+        considered neighbors. If None, radius is assumed to be infinity.
 
     metric : string or callable, default='euclidean'
         Input to paired_distances function. Can be string specified 
@@ -188,7 +188,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         # Compute the edge weights
         distances = paired_distances(X[neighbors[0]], X[neighbors[1]], metric=metric)
 
-        if eps != None:
+        if eps is not None:
           neighbors = neighbors[:, distances <= eps]
           distances = distances[distances <= eps]
 
