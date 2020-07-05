@@ -53,19 +53,24 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     """
 
     @_deprecate_positional_args
-    def __init__(self, s, *, metric='euclidean', random_state=None):
+    def __init__(self, eps, s, *, metric='euclidean', random_state=None):
+        self.eps = eps
         self.s = s
         self.metric = metric
         self.random_state = random_state
 
 
     def _fit(self, X):
+        if self.eps <= 0:
+            raise ValueError("Epsilon needs to be positive: %s" % self.eps)
+
         if self.s < 0:
             raise ValueError("Sampling rate needs to be non-negative: %s" % self.s)
 
         if self.metric not in PAIRED_DISTANCES and not callable(self.metric):
             raise ValueError('Unknown distance %s' % self.metric)
 
+        self.eps_ = self.eps
         self.s_ = self.s
         self.metric_ = self.metric
 
@@ -78,19 +83,20 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-            Sample data.
+                Sample data.
 
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Non-zero entries in neighborhood[i, j] indicate an edge 
-            between X[i] and X[j] with value equal to weight of edge.
-            The matrix is of CSR format.
+                Non-zero entries in neighborhood[i, j] indicate an edge 
+                between X[i] and X[j] with value equal to weight of edge.
+                The matrix is of CSR format.
         """
 
         check_is_fitted(self)
 
-        return self.subsampled_neighbors(X, self.s_, self.metric_, self.random_state)
+        return self.subsampled_neighbors(X, self.eps_, self.s_, self.metric_,
+            self.random_state)
 
 
     def fit_transform(self, X, y=None):
@@ -105,21 +111,21 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Non-zero entries in neighborhood[i, j] indicate an edge 
-            between X[i] and X[j] with value equal to weight of edge.
-            The matrix is of CSR format.
+                Non-zero entries in neighborhood[i, j] indicate an edge 
+                between X[i] and X[j] with value equal to weight of edge.
+                The matrix is of CSR format.
         """
         
         return self.fit(X).transform(X)
 
 
-    def subsampled_neighbors(self, X, s, metric='euclidean', random_state=None):
+    def subsampled_neighbors(self, X, eps, s, metric='euclidean', random_state=None):
         """Compute the subsampled graph of neighbors for points in X.
 
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-                Sample data.
+            Sample data.
 
         s : float
             Sampling probability.
@@ -139,9 +145,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Non-zero entries in neighborhood[i, j] indicate an edge 
-            between X[i] and X[j] with value equal to weight of edge.
-            The matrix is of CSR format.
+                Non-zero entries in neighborhood[i, j] indicate an edge 
+                between X[i] and X[j] with value equal to weight of edge.
+                The matrix is of CSR format.
         """
 
         from scipy.sparse import csr_matrix
@@ -176,8 +182,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         distances = paired_distances(X[neighbors[0]], X[neighbors[1]], metric=metric)
 
         # Create the distance matrix in CSR format 
-        neighborhood = csr_matrix((distances, neighbors), shape=(n_samples, n_samples), 
-          dtype=np.float)
+        neighborhood = csr_matrix((distances[distances <= eps], neighbors[:, distances <= eps]), 
+          shape=(n_samples, n_samples), dtype=np.float)
 
         # Make the matrix symmetric
         neighborhood += neighborhood.transpose()
