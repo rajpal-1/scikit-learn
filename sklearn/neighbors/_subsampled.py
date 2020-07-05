@@ -17,7 +17,7 @@ from ..utils.validation import check_array
 
 class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin, 
     BaseEstimator):
-    """Compute the subsampled graph of neighbors for points in X.
+    """Compute subsampled sparse distance matrix of neighboring points in X.
 
     Parameters
     ----------
@@ -26,7 +26,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Sampling probability.
 
     eps : float, default=None
-        Neighborhood radius.
+        Neighborhood radius. Pairs of points which are at most eps apart are 
+        considered neighbors. If not given, radius is assumed to be infinity.
 
     metric : string or callable, default='euclidean'
         Input to paired_distances function. Can be string specified 
@@ -48,11 +49,10 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     Notes
     -----
-    Each edge in the fully connected graph of X is sampled with probability s
-    with replacement. We sample two arrays of n_samples * n_samples * s vertices 
-    from X with replacement. Since (i, j) is equivalent to (j, i), we discard any 
-    pairs where j >= i. We ensure symmetry by adding the neighborhood matrix to its 
-    transpose. 
+    Each pair of points in X is sampled with probability s with replacement. 
+    Since (i, j) is equivalent to (j, i), we sample each unique (i, j)
+    with probability s / 2. We ensure symmetry by triangularizing the distance 
+    matrix and adding it to its transpose. 
     """
 
     @_deprecate_positional_args
@@ -91,8 +91,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Non-zero entries in neighborhood[i, j] indicate an edge 
-            between X[i] and X[j] with value equal to weight of edge.
+            Sparse matrix where the i-jth value is equal to the distance 
+            between X[i] and X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
 
@@ -114,8 +114,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Non-zero entries in neighborhood[i, j] indicate an edge 
-            between X[i] and X[j] with value equal to weight of edge.
+            Sparse matrix where the i-jth value is equal to the distance 
+            between X[i] and X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
         
@@ -123,7 +123,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
 
     def subsampled_neighbors(self, X, s, eps=None, metric='euclidean', random_state=None):
-        """Compute the subsampled graph of neighbors for points in X.
+        """Compute the subsampled sparse distance matrix of neighboring points in X.
 
         Parameters
         ----------
@@ -134,7 +134,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
             Sampling probability.
 
         eps : float, default=None
-            Neighborhood radius.
+            Neighborhood radius. Pairs of points which are at most eps apart are 
+            considered neighbors. If not given, radius is assumed to be infinity.
 
         metric : string or callable, default='euclidean'
             Input to paired_distances function. Can be string specified 
@@ -151,8 +152,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Non-zero entries in neighborhood[i, j] indicate an edge 
-            between X[i] and X[j] with value equal to weight of edge.
+            Sparse matrix where the i-jth value is equal to the distance 
+            between X[i] and X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
 
