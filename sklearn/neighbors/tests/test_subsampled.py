@@ -48,11 +48,11 @@ def test_sample_toy_fit_sparse_transform_nonsparse():
     # Fit with sparse, test with non-sparse
     n = SubsampledNeighborsTransformer(0.9, random_state=2)
     expected_result = csr_matrix(([3.464102, 8.660254, 1.732051, 6.928203, 3.464102, 1.732051, 
-    	5.196152, 8.660254, 6.928203, 5.196152], ([0, 0, 1, 1, 2, 2, 2, 3, 3, 3], 
-    	[2, 3, 2, 3, 0, 1, 3, 0, 1, 2])), shape=(4, 4))
+        5.196152, 8.660254, 6.928203, 5.196152], ([0, 0, 1, 1, 2, 2, 2, 3, 3, 3], 
+        [2, 3, 2, 3, 0, 1, 3, 0, 1, 2])), shape=(4, 4))
     assert_array_almost_equal(n.fit(X_csr).transform(X).toarray(), expected_result.toarray())
     expected_result = csr_matrix(([2., 3., 1., 2., 2., 1., 1., 3., 2., 1.], 
-		([0, 0, 1, 1, 2, 2, 2, 3, 3, 3], [2, 3, 2, 3, 0, 1, 3, 0, 1, 2])), shape=(4, 4))
+        ([0, 0, 1, 1, 2, 2, 2, 3, 3, 3], [2, 3, 2, 3, 0, 1, 3, 0, 1, 2])), shape=(4, 4))
     assert_array_equal(n.fit(X2_csr).transform(X2).toarray(), expected_result.toarray())
 
 
@@ -60,7 +60,7 @@ def test_sample_toy_fit_nonsparse_transform_sparse():
     # Fit with non-sparse, test with sparse
     n = SubsampledNeighborsTransformer(0.3, random_state=3)
     expected_result = csr_matrix(([8.660254, 1.732051, 1.732051, 8.660254], ([0, 1, 2, 3], [3, 2, 1, 0])), 
-    	shape=(4, 4))
+        shape=(4, 4))
     assert_array_almost_equal(n.fit(X).transform(X_csr).toarray(), expected_result.toarray())
     expected_result = csr_matrix(([3., 1., 1., 3.], ([0, 1, 2, 3], [3, 2, 1, 0])), shape=(4, 4))
     assert_array_equal(n.fit(X2).transform(X2_csr).toarray(), expected_result.toarray())
@@ -72,7 +72,7 @@ def test_sample_toy_noncsr():
     expected_result = csr_matrix(([3.464102, 1.732051, 3.464102, 1.732051, 5.196152, 5.196152], 
         ([0, 1, 2, 2, 2, 3], [2, 2, 0, 1, 3, 2])), shape=(4, 4))
     assert_array_almost_equal(n.fit(X_csr.tocoo()).transform(X_csr.tolil()).toarray(), 
-    	expected_result.toarray())
+        expected_result.toarray())
     expected_result = csr_matrix(([2., 1., 2., 1., 1., 1.], ([0, 1, 2, 2, 2, 3], [2, 2, 0, 1, 3, 2])), 
         shape=(4, 4))
     assert_array_equal(n.fit(X2_csr.todok()).transform(X2_csr.tocsc()).toarray(), expected_result.toarray())
@@ -171,7 +171,7 @@ def test_iris_small_s():
 
     n = SubsampledNeighborsTransformer(0.0002, eps=6.0, random_state=42)
     expected_result = csr_matrix(([3.780212, 1.516575, 3.780212, 1.516575], 
-    	([14, 92, 102, 106], [102, 106, 14, 92])), shape=(n_iris, n_iris))
+        ([14, 92, 102, 106], [102, 106, 14, 92])), shape=(n_iris, n_iris))
     assert_array_almost_equal(n.fit_transform(iris.data).toarray(), expected_result.toarray())
 
 
