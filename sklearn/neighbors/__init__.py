@@ -34,5 +34,6 @@ __all__ = ['BallTree',
            'KernelDensity',
            'LocalOutlierFactor',
            'NeighborhoodComponentsAnalysis',
+           'SubsampledNeighborsTransformer',
            'VALID_METRICS',
            'VALID_METRICS_SPARSE']
