@@ -188,7 +188,8 @@ def test_iris_cosine():
 
 def test_iris_callable():
     # Callable lambda function
-    fn = lambda a, b : np.mean(np.maximum(a, b))
+    def fn(a, b):
+        return np.mean(np.maximum(a, b))
     n = SubsampledNeighborsTransformer(0.5, eps=5.0, metric=fn,
                                        random_state=42)
     assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.4916244)
