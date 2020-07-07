@@ -38,7 +38,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         the distance between them.
 
     random_state : int, RandomState instance, default=None
-        Seeds the random sampling of lists of vertices. Use an int to 
+        Seeds the random sampling of lists of vertices. Use an int to
         make the randomness deterministic.
         See :term:`Glossary <random_state>`.
 
@@ -60,7 +60,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     """
 
     @_deprecate_positional_args
-    def __init__(self, s=0.1, eps=None, *, metric='euclidean', random_state=None):
+    def __init__(self, s=0.1, eps=None, *, metric='euclidean',
+                 random_state=None):
         self.s = s
         self.eps = eps
         self.metric = metric
@@ -69,8 +70,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     def _check_algorithm_metric(self):
         if self.s < 0:
-            raise ValueError("Sampling rate needs to be non-negative: %s" % 
-                self.s)
+            raise ValueError("Sampling rate needs to be non-negative: %s" %
+                             self.s)
 
         if self.eps is not None and self.eps <= 0:
             raise ValueError("Epsilon needs to be positive: %s" % self.eps)
@@ -95,7 +96,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Sparse matrix where the i-jth value is equal to the distance 
+            Sparse matrix where the i-jth value is equal to the distance
             between X[i] and X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
@@ -103,7 +104,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         check_is_fitted(self)
 
         return self.subsampled_neighbors(X, self.s, self.eps, self.metric,
-            self.random_state_)
+                                         self.random_state_)
 
     def fit_transform(self, X, y=None):
         """Fit to data, then transform it.
@@ -117,16 +118,16 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Sparse matrix where the i-jth value is equal to the distance 
+            Sparse matrix where the i-jth value is equal to the distance
             between X[i] and X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
-        
+
         return self.fit(X).transform(X)
 
-    def subsampled_neighbors(self, X, s, eps=None, metric='euclidean', 
+    def subsampled_neighbors(self, X, s, eps=None, metric='euclidean',
                              random_state=None):
-        """Compute the subsampled sparse distance matrix of neighboring 
+        """Compute the subsampled sparse distance matrix of neighboring
         points in X.
 
         Parameters
@@ -138,26 +139,26 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
             Sampling probability.
 
         eps : float, default=None
-            Neighborhood radius. Pairs of points which are at most eps apart 
-            are considered neighbors. If not given, radius is assumed to be 
+            Neighborhood radius. Pairs of points which are at most eps apart
+            are considered neighbors. If not given, radius is assumed to be
             infinity.
 
         metric : string or callable, default='euclidean'
-            Input to paired_distances function. Can be string specified 
-            in PAIRED_DISTANCES, including "euclidean", "manhattan", or 
-            "cosine." Alternatively, can be a callable function, which should 
-            take two arrays from X as input and return a value indicating 
+            Input to paired_distances function. Can be string specified
+            in PAIRED_DISTANCES, including "euclidean", "manhattan", or
+            "cosine." Alternatively, can be a callable function, which should
+            take two arrays from X as input and return a value indicating
             the distance between them.
 
         random_state : int, RandomState instance, default=None
-            Seeds the random sampling of lists of vertices. Use an int to 
+            Seeds the random sampling of lists of vertices. Use an int to
             make the randomness deterministic.
             See :term:`Glossary <random_state>`.
 
         Returns
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Sparse matrix where the i-jth value is equal to the distance 
+            Sparse matrix where the i-jth value is equal to the distance
             between X[i] and X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
@@ -168,13 +169,13 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         n_samples = X.shape[0]
 
-        # We use sampling rate s/2 because each edge has two chances of being 
+        # We use sampling rate s/2 because each edge has two chances of being
         # sampled: as (i, j) and (j, i)
         n_edges = int(n_samples * n_samples * s / 2)
 
         # No edges sampled
         if n_edges < 1:
-          return csr_matrix((n_samples, n_samples), dtype=np.float)
+            return csr_matrix((n_samples, n_samples), dtype=np.float)
 
         # Sample the edges with replacement
         x = random_state.choice(n_samples, size=n_edges, replace=True)
@@ -185,17 +186,26 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         neighbors = neighbors[:, neighbors[0] > neighbors[1]]
         neighbors = np.unique(neighbors, axis=1)
 
-        distances = paired_distances(X[neighbors[0]], X[neighbors[1]], 
-            metric=metric)
+        distances = paired_distances(X[neighbors[0]], X[neighbors[1]],
+                                     metric=metric)
 
         if eps is not None:
-          neighbors = neighbors[:, distances <= eps]
-          distances = distances[distances <= eps]
+            neighbors = neighbors[:, distances <= eps]
+            distances = distances[distances <= eps]
 
-        neighborhood = csr_matrix((distances, neighbors), 
-            shape=(n_samples, n_samples), dtype=np.float)
+        neighborhood = csr_matrix((distances, neighbors),
+                                  shape=(n_samples, n_samples),
+                                  dtype=np.float)
 
         # Make the matrix symmetric
         neighborhood += neighborhood.transpose()
 
         return neighborhood
+
+    def _more_tags(self):
+        return {
+            '_xfail_checks': {
+                'check_methods_subset_invariance':
+                'fails for the decision_function method'
+            }
+        }
