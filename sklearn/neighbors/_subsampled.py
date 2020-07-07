@@ -12,7 +12,7 @@ from ..metrics.pairwise import paired_distances, check_pairwise_arrays, \
 from ._base import UnsupervisedMixin
 from ..base import TransformerMixin, BaseEstimator
 from ..utils import check_random_state
-from ..utils.validation import check_is_fitted, _deprecate_positional_args
+from ..utils.validation import check_is_fitted
 from ..utils.validation import check_array
 
 
@@ -59,16 +59,15 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     and the final distance matrix is symmetric.
     """
 
-    @_deprecate_positional_args
-    def __init__(self, s=0.1, eps=None, *, metric='euclidean',
+    def __init__(self, s=0.1, eps=None, metric='euclidean',
                  random_state=None):
         self.s = s
         self.eps = eps
         self.metric = metric
         self.random_state = random_state
-        self._check_algorithm_metric()
+        self._check_parameters()
 
-    def _check_algorithm_metric(self):
+    def _check_parameters(self):
         if self.s < 0:
             raise ValueError("Sampling rate needs to be non-negative: %s" %
                              self.s)
