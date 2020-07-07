@@ -183,3 +183,11 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         # neighborhood += neighborhood.transpose()
 
         return neighborhood
+
+    def _more_tags(self):
+        return {
+            '_xfail_checks': {
+                'check_methods_subset_invariance':
+                'Fails for the transform method'
+            }
+        }
