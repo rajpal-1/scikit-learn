@@ -78,8 +78,12 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         if self.metric not in PAIRED_DISTANCES and not callable(self.metric):
             raise ValueError('Unknown distance %s' % self.metric)
 
+        return self
+
     def _fit(self, X):
-        self._fit_X = check_array(X, accept_sparse='csr')
+
+        self.fit_X_ = check_array(X, accept_sparse='csr')
+        self.n_train_ = self.fit_X_.shape[0]
         self.random_state_ = check_random_state(self.random_state)
 
         return self
@@ -104,25 +108,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         return self.subsampled_neighbors(X, self.s, self.eps, self.metric,
                                          self.random_state_)
-
-    def fit_transform(self, X, y=None):
-        """Fit to data, then transform it.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Sample data.
-        y : ignored
-
-        Returns
-        -------
-        neighborhood : sparse matrix of shape (n_samples, n_samples)
-            Sparse matrix where the i-jth value is equal to the distance
-            between X[i] and X[j] for randomly sampled pairs of neighbors.
-            The matrix is of CSR format.
-        """
-
-        return self.fit(X).transform(X)
 
     def subsampled_neighbors(self, X, s, eps=None, metric='euclidean',
                              random_state=None):
@@ -164,28 +149,26 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         from scipy.sparse import csr_matrix
 
-        X = check_pairwise_arrays(X, self._fit_X, accept_sparse='csr')[0]
+        X, fit_X = check_pairwise_arrays(X, self.fit_X_, accept_sparse='csr')
 
         n_samples = X.shape[0]
 
-        # We use sampling rate s/2 because each edge has two chances of being
-        # sampled: as (i, j) and (j, i)
-        n_edges = int(n_samples * n_samples * s / 2)
+        n_edges = int(n_samples * self.n_train_ * s)
 
         # No edges sampled
         if n_edges < 1:
-            return csr_matrix((n_samples, n_samples), dtype=np.float)
+            return csr_matrix((n_samples, self.n_train_), dtype=np.float)
 
         # Sample the edges with replacement
         x = random_state.choice(n_samples, size=n_edges, replace=True)
-        y = random_state.choice(n_samples, size=n_edges, replace=True)
+        y = random_state.choice(self.n_train_, size=n_edges, replace=True)
 
         # Remove duplicates
-        neighbors = np.block([[x, y], [y, x]])
-        neighbors = neighbors[:, neighbors[0] > neighbors[1]]
-        neighbors = np.unique(neighbors, axis=1)
+        # neighbors = np.block([[x, y], [y, x]])
+        # neighbors = neighbors[:, neighbors[0] > neighbors[1]]
+        neighbors = np.unique([x, y], axis=1)
 
-        distances = paired_distances(X[neighbors[0]], X[neighbors[1]],
+        distances = paired_distances(X[neighbors[0]], fit_X[neighbors[1]],
                                      metric=metric)
 
         if eps is not None:
@@ -193,18 +176,10 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
             distances = distances[distances <= eps]
 
         neighborhood = csr_matrix((distances, neighbors),
-                                  shape=(n_samples, n_samples),
+                                  shape=(n_samples, self.n_train_),
                                   dtype=np.float)
 
         # Make the matrix symmetric
-        neighborhood += neighborhood.transpose()
+        # neighborhood += neighborhood.transpose()
 
         return neighborhood
-
-    def _more_tags(self):
-        return {
-            '_xfail_checks': {
-                'check_methods_subset_invariance':
-                'fails for the transform method'
-            }
-        }
