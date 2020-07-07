@@ -46,8 +46,10 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     ----------
     fit_X_ : array-like of shape (n_train, n_features)
         Training set
+
     n_train_ : int
         Number of training samples
+
     random_state_ : numpy.RandomState
         Pseudo random number generator object used during initialization.
 
@@ -168,8 +170,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         y = random_state.choice(self.n_train_, size=n_edges, replace=True)
 
         # Remove duplicates
-        # neighbors = np.block([[x, y], [y, x]])
-        # neighbors = neighbors[:, neighbors[0] > neighbors[1]]
         neighbors = np.unique([x, y], axis=1)
 
         distances = paired_distances(X[neighbors[0]], fit_X[neighbors[1]],
@@ -182,10 +182,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         neighborhood = csr_matrix((distances, neighbors),
                                   shape=(n_samples, self.n_train_),
                                   dtype=np.float)
-
-        # Make the matrix symmetric
-        # neighborhood += neighborhood.transpose()
-
+        
         return neighborhood
 
     def _more_tags(self):
