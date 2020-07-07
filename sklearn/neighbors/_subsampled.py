@@ -61,8 +61,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     Notes
     -----
-    Each pair of points in X is sampled uniformly with probability s,
-    and the final distance matrix is symmetric.
+    Each pair of points is sampled uniformly with probability s.
     """
 
     def __init__(self, s=0.1, eps=None, metric='euclidean',
@@ -106,7 +105,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
             Sparse matrix where the i-jth value is equal to the distance
-            between X[i] and X[j] for randomly sampled pairs of neighbors.
+            between X[i] and fit_X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
 
@@ -117,8 +116,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     def subsampled_neighbors(self, X, s, eps=None, metric='euclidean',
                              random_state=None):
-        """Compute the subsampled sparse distance matrix of neighboring
-        points in X.
+        """Compute the subsampled sparse distance matrix of the neighboring
+        points of X in fit_X.
 
         Parameters
         ----------
@@ -149,7 +148,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         -------
         neighborhood : sparse matrix of shape (n_samples, n_samples)
             Sparse matrix where the i-jth value is equal to the distance
-            between X[i] and X[j] for randomly sampled pairs of neighbors.
+            between X[i] and fit_X[j] for randomly sampled pairs of neighbors.
             The matrix is of CSR format.
         """
 
