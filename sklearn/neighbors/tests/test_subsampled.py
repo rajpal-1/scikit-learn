@@ -188,9 +188,9 @@ def test_iris_cosine():
 
 def test_iris_manhattan():
     # Manhattan distance
-    n = SubsampledNeighborsTransformer(0.5, eps=10.0, metric='manhattan',
+    n = SubsampledNeighborsTransformer(0.5, eps=5.0, metric='manhattan',
                                        random_state=42)
-    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.5973466)
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 0.5288044)
 
 
 def test_iris_small_s():
