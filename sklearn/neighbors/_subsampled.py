@@ -44,6 +44,10 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
     Attributes
     ----------
+    fit_X_ : array-like of shape (n_train, n_features)
+        Training set
+    n_train_ : int
+        Number of training samples
     random_state_ : numpy.RandomState
         Pseudo random number generator object used during initialization.
 

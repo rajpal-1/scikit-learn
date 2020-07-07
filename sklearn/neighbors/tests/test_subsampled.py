@@ -186,11 +186,12 @@ def test_iris_cosine():
                         0.0097946)
 
 
-def test_iris_manhattan():
-    # Manhattan distance
-    n = SubsampledNeighborsTransformer(0.5, eps=5.0, metric='manhattan',
+def test_iris_callable():
+    # Callable lambda function
+    fn = lambda a, b : np.mean(np.maximum(a, b))
+    n = SubsampledNeighborsTransformer(0.5, eps=5.0, metric=fn,
                                        random_state=42)
-    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 0.5288044)
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.4916244)
 
 
 def test_iris_small_s():
