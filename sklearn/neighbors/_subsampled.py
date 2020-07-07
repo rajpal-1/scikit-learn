@@ -182,7 +182,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         neighborhood = csr_matrix((distances, neighbors),
                                   shape=(n_samples, self.n_train_),
                                   dtype=np.float)
-        
+
         return neighborhood
 
     def _more_tags(self):
