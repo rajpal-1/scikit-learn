@@ -206,6 +206,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         return {
             '_xfail_checks': {
                 'check_methods_subset_invariance':
-                'fails for the decision_function method'
+                'fails for the transform method'
             }
         }
