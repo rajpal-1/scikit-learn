@@ -12,6 +12,7 @@ from pytest import importorskip
 import numpy as np
 import scipy.sparse as sp
 
+from sklearn.base import BaseEstimator
 from sklearn.utils._testing import assert_no_warnings
 from sklearn.utils._testing import ignore_warnings
 from sklearn.utils._testing import SkipTest
@@ -43,12 +44,14 @@ from sklearn.utils.validation import (
     _deprecate_positional_args,
     _check_sample_weight,
     _allclose_dense_sparse,
+    _validate_bad_defaults,
     FLOAT_DTYPES)
 from sklearn.utils.validation import _check_fit_params
 
 import sklearn
 
 from sklearn.exceptions import NotFittedError, PositiveSpectrumWarning
+from sklearn.exceptions import BadDefaultWarning
 
 from sklearn.utils._testing import TempMemmap
 
@@ -1105,6 +1108,54 @@ def test_allclose_dense_sparse_raise(toarray):
            "and an array")
     with pytest.raises(ValueError, match=msg):
         _allclose_dense_sparse(x, y)
+
+
+def test_validate_bad_params():
+    msg1 = ("There is no good default value for the following parameters in "
+            "A. Please consult the documentation on how to set them for your "
+            "data."
+            "\n    'param_a' - using default value: 1"
+            "\n    'param_b' - using default value: 'kmeans'")
+    msg2 = ("There is no good default value for the following parameters in "
+            "A. Please consult the documentation on how to set them for your "
+            "data."
+            "\n    'param_b' - using default value: 'kmeans'")
+
+    class A(BaseEstimator):
+        # The param_c should not warn as a result of _validate_bad_defaults
+        # since it's not included in _bad_defaults
+        _bad_defaults = {'param_a': 1, 'param_b': 'kmeans'}
+
+        def __init__(self, param_a='warn', param_b='warn', param_c='warn',
+                     param_d=0):
+            self.param_a = param_a
+            self.param_b = param_b
+            self.param_c = param_c
+            self.param_d = param_d
+
+        def fit(self, X=None, y=None):
+            _validate_bad_defaults(self)
+            return self
+
+    with pytest.warns(BadDefaultWarning, match=msg1):
+        A().fit()
+
+    # should not warn the second time
+    with warnings.catch_warnings(record=True) as warns:
+        A().fit()
+    assert not warns
+
+    with pytest.warns(BadDefaultWarning, match=msg2):
+        A(param_a=1).fit()
+
+    # should not warn the second time
+    with warnings.catch_warnings(record=True) as warns:
+        A(param_a=1).fit()
+    assert not warns
+
+    with warnings.catch_warnings(record=True) as warns:
+        A(param_a=1, param_b='dbscan').fit()
+    assert not warns
 
 
 def test_deprecate_positional_args_warns_for_function():

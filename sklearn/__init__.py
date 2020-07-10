@@ -15,10 +15,13 @@ See http://scikit-learn.org for complete documentation.
 import sys
 import logging
 import os
+import warnings
+from .exceptions import BadDefaultWarning
 
 from ._config import get_config, set_config, config_context
 
 logger = logging.getLogger(__name__)
+warnings.filterwarnings("once", category=BadDefaultWarning)
 
 
 # PEP0440 compatible formatted version, see:

@@ -15,7 +15,8 @@ __all__ = ['NotFittedError',
            'NonBLASDotWarning',
            'SkipTestWarning',
            'UndefinedMetricWarning',
-           'PositiveSpectrumWarning']
+           'PositiveSpectrumWarning',
+           'BadDefaultWarning']
 
 
 class NotFittedError(ValueError, AttributeError):
@@ -152,4 +153,15 @@ class PositiveSpectrumWarning(UserWarning):
     very small non-zero eigenvalues compared to the largest eigenvalue.
 
     .. versionadded:: 0.22
+    """
+
+
+class BadDefaultWarning(UserWarning):
+    """Warning raised for unspecified parameters with no good default.
+
+    This warning is typically raised by _validate_bad_defaults when the user
+    does not specify a value for a parameter with no good default value. An
+    example is the ``eps`` in :class:`cluster.DBSCAN`.
+
+    .. versionadded: 0.24
     """

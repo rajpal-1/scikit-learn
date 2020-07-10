@@ -16,6 +16,7 @@ from scipy import sparse
 from ..base import BaseEstimator, ClusterMixin
 from ..utils.validation import _check_sample_weight, _deprecate_positional_args
 from ..neighbors import NearestNeighbors
+from ..utils.validation import _validate_bad_defaults
 
 from ._dbscan_inner import dbscan_inner
 
@@ -41,6 +42,9 @@ def dbscan(X, eps=0.5, *, min_samples=5, metric='minkowski',
         on the distances of points within a cluster. This is the most
         important DBSCAN parameter to choose appropriately for your data set
         and distance function.
+
+        Note that there is no good default value for this parameter. An
+        optimal value depends on the data at hand as well as the used metric.
 
     min_samples : int, default=5
         The number of samples (or total weight) in a neighborhood for a point
@@ -165,6 +169,11 @@ class DBSCAN(ClusterMixin, BaseEstimator):
         important DBSCAN parameter to choose appropriately for your data set
         and distance function.
 
+        Note that there is no good default value for this parameter. An
+        optimal value depends on the data at hand as well as the used metric.
+        If not specified, a warning is raised and the default value of 0.5 is
+        used.
+
     min_samples : int, default=5
         The number of samples (or total weight) in a neighborhood for a point
         to be considered as a core point. This includes the point itself.
@@ -272,8 +281,11 @@ class DBSCAN(ClusterMixin, BaseEstimator):
     DBSCAN revisited, revisited: why and how you should (still) use DBSCAN.
     ACM Transactions on Database Systems (TODS), 42(3), 19.
     """
+
+    _bad_defaults = {'eps': 0.5}
+
     @_deprecate_positional_args
-    def __init__(self, eps=0.5, *, min_samples=5, metric='euclidean',
+    def __init__(self, eps='warn', *, min_samples=5, metric='euclidean',
                  metric_params=None, algorithm='auto', leaf_size=30, p=None,
                  n_jobs=None):
         self.eps = eps
@@ -311,8 +323,9 @@ class DBSCAN(ClusterMixin, BaseEstimator):
 
         """
         X = self._validate_data(X, accept_sparse='csr')
+        eps = _validate_bad_defaults(self)['eps']
 
-        if not self.eps > 0.0:
+        if not eps > 0.0:
             raise ValueError("eps must be positive.")
 
         if sample_weight is not None:
@@ -329,7 +342,7 @@ class DBSCAN(ClusterMixin, BaseEstimator):
                 X.setdiag(X.diagonal())  # XXX: modifies X's internals in-place
 
         neighbors_model = NearestNeighbors(
-            radius=self.eps, algorithm=self.algorithm,
+            radius=eps, algorithm=self.algorithm,
             leaf_size=self.leaf_size, metric=self.metric,
             metric_params=self.metric_params, p=self.p, n_jobs=self.n_jobs)
         neighbors_model.fit(X)

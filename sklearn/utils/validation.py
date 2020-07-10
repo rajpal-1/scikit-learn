@@ -28,6 +28,7 @@ from .. import get_config as _get_config
 from ..exceptions import PositiveSpectrumWarning
 from ..exceptions import NotFittedError
 from ..exceptions import DataConversionWarning
+from ..exceptions import BadDefaultWarning
 
 FLOAT_DTYPES = (np.float64, np.float32, np.float16)
 
@@ -1337,6 +1338,27 @@ def _allclose_dense_sparse(x, y, rtol=1e-7, atol=1e-9):
         return np.allclose(x, y, rtol=rtol, atol=atol)
     raise ValueError("Can only compare two sparse matrices, not a sparse "
                      "matrix and an array")
+
+
+def _validate_bad_defaults(obj):
+    if not hasattr(obj, "_bad_defaults"):
+        return
+
+    obj_values = {param: getattr(obj, param) for param in obj._bad_defaults}
+    bad_params = sorted([param for param, value in obj_values.items()
+                        if value == 'warn'])
+    if bad_params:
+        msg = ("There is no good default value for the following "
+               "parameters in {}. Please consult the documentation "
+               "on how to set them for your data.\n    ".format(
+                   obj.__class__.__name__))
+        msg += '\n    '.join(["'{}' - using default value: {!r}".format(
+            param, obj._bad_defaults[param]) for param in bad_params])
+        warnings.warn(msg, BadDefaultWarning)
+    all_params = obj.get_params()
+    for param in bad_params:
+        all_params[param] = obj._bad_defaults[param]
+    return all_params
 
 
 def _check_fit_params(X, fit_params, indices=None):
