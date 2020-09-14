@@ -7,7 +7,6 @@
 
 cimport cython
 from libcpp.vector cimport vector
-from libcpp.set cimport set
 from libcpp.pair cimport pair
 from libc.stdlib cimport rand
 from libcpp.algorithm cimport sort as stdsort
@@ -26,55 +25,6 @@ from ..utils.validation import check_array
 np.import_array()
 
 import time
-
-# def subsample2(double eps,
-#               double s,
-#               np.int32_t n,
-#               np.int32_t d,
-#               np.ndarray[double, ndim=1, mode='c'] X):
-
-#     cdef np.int32_t i, j, k, neighbor, cnt = 0
-#     cdef np.npy_float distance
-
-#     cdef vector[vector[pair[np.npy_float, np.int32_t]]] neighbors
-#     cdef vector[np.npy_float] data
-#     cdef vector[np.int32_t] indices, indptr
-
-#     for i in range(n):
-#         neighbors.push_back(vector[pair[np.npy_float, np.int32_t]]())
-
-#         # Explicity set each point as its own neighbor
-#         neighbors[i].push_back((0., i))
-
-#     for i in range(n - 1):
-#         # To ensure neighborhood graph is symmetric, we only sample points that come after
-#         for j in range(int(s * (n - i)) - 1):
-
-#             neighbor = rand() % (n - i - 1) + i + 1;
-            
-#             distance = 0
-#             for k in range(d):
-#                 distance = (X[i * d + k] - X[neighbor * d + k])**2
-#             # distance = paired_euclidean_distances(X[i:i+1], X[neighbor:neighbor+1])[0]
-
-#             distance **= 0.5
-#             if distance <= eps:
-#                 # Add edge between both vertices
-#                 neighbors[i].push_back((distance, neighbor))
-#                 neighbors[neighbor].push_back((distance, i))
-
-#     for i in range(n):
-#         stdsort(neighbors[i].begin(), neighbors[i].end())
-#         indptr.push_back(cnt)
-
-#         for dist_neighb in neighbors[i]:
-#             data.push_back(dist_neighb.first)
-#             indices.push_back(dist_neighb.second)
-#             cnt += 1
-
-#     indptr.push_back(cnt)
-
-#     return data, indices, indptr
 
 def subsample(double s,
               np.int32_t n,
@@ -110,12 +60,12 @@ def sort_by_data(int n,
     cdef np.int32_t i, j, start, end, row = 0
     cdef vector[pair[np.npy_float, np.int32_t]] dist_column
 
-    for i in range(m):#4
+    for i in range(m):
 
         # Fill in indptr array
         for j in range(rows[i] - row):
             indptr[row + 1 + j] = i
-        row = rows[i] #2
+        row = rows[i]
 
         # Create vector of pairs for sorting
         dist_column.push_back((distances[i], cols[i]))
@@ -278,53 +228,30 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         X, fit_X = check_pairwise_arrays(X, self.fit_X_, accept_sparse='csr')
         
         n, d = X.shape
-        n_neighbors = 2 * int(s * n / 2) * n + n
+        n_neighbors = int(s * n) * n + n
         
         # No edges sampled
         if n_neighbors < 1:
-            return csr_matrix((n, self.n_train_), dtype=np.float)
-        
-        ## FROM HERE
-        # # Sample the edges with replacement
-        # t0 = time.time()
-        # x = np.repeat(np.arange(n), n_edges)
-        # y = np.array(np.random.rand(n * n_edges) * n, dtype=np.int32)
-        # t1 = time.time()
-        # print('s1', t1-t0)
-        
-        # TO HERE
+            return csr_matrix((n, n), dtype=np.float)
 
-        t0 = time.time()
         rows = np.full(n_neighbors, -1, dtype=np.int32)
         cols = np.full(n_neighbors, -1, dtype=np.int32)
         subsample(s, n, d, rows, cols)
-        t1 = time.time()
-        print('s1', t1-t0)
 
-        # THIS IS VERY SLOW
         distances = paired_distances(X[rows], X[cols], metric=metric)
-        t2 = time.time()
-        print('s2', t2-t1)
         
         if eps is not None:
             eps_neighb = np.where(distances <= eps)[0]
             rows = rows[eps_neighb]
             cols = cols[eps_neighb]
             distances = distances[eps_neighb]
-
-        t3 = time.time()
-        print('s3', t3-t2)
-        
-        t4 = time.time()
+     
         indptr = np.zeros(n + 1, dtype=np.int32)
         sort_by_data(n, rows.shape[0], distances, rows, cols, indptr)
-        t5 = time.time()
-        print('s4', t5-t4)
 
         neighborhood = csr_matrix((distances, cols, indptr),
-                                  shape=(n, self.n_train_),
+                                  shape=(n, n),
                                   dtype=np.float)
-        print('s5', time.time()-t5)
         
         return neighborhood
 
