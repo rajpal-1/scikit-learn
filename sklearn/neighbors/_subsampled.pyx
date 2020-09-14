@@ -36,7 +36,6 @@ def subsample(double s,
     cdef np.int32_t i, _, cnt = 0
 
     for i in range(n):
-        
         # Explicity set each point as its own neighbor
         rows[cnt] = i
         cols[cnt] = i
@@ -44,7 +43,6 @@ def subsample(double s,
         
         # Sample neighbors
         for _ in range(int(s * n)):
-            
             rows[cnt] = i
             cols[cnt] = rand() % n
             cnt += 1
@@ -61,7 +59,6 @@ def sort_by_data(int n,
     cdef vector[pair[np.npy_float, np.int32_t]] dist_column
 
     for i in range(m):
-
         # Fill in indptr array
         for j in range(rows[i] - row):
             indptr[row + 1 + j] = i
