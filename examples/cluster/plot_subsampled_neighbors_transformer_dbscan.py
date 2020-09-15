@@ -22,7 +22,7 @@ from numpy.random import multivariate_normal
 # #############################################################################
 # Generate sample data
 
-np.random.seed(0)
+random_state = 0
 
 batch_size = 45
 n_features = 2
@@ -52,7 +52,7 @@ mi_dbscan = adjusted_mutual_info_score(labels_dbscan, labels)
 # Compute clustering with DBSCAN and subsampled neighbors
 
 dbscan_subsampled = DBSCAN(eps=eps, min_samples=min_samples * s, metric='precomputed')
-snt = SubsampledNeighborsTransformer(s=s, eps=eps)
+snt = SubsampledNeighborsTransformer(s=s, eps=eps, random_state=random_state)
 
 t0 = time.time()
 X_subsampled = snt.fit_transform(X)
@@ -67,11 +67,10 @@ mi_subsampled = adjusted_mutual_info_score(labels_subsampled, labels)
 
 fig = plt.figure(figsize=(6, 3))
 fig.subplots_adjust(left=0.02, right=0.98, bottom=0.05, top=0.9)
-colors = ['blue', 'green', 'red', 'magenta', 'turquoise', 'orange']
+colors = ['blue', 'green', 'red']
 
 # DBSCAN
 ax = fig.add_subplot(1, 2, 1)
-print(len(np.unique(labels_dbscan)), len(colors))
 for cluster, c in zip(np.unique(labels_dbscan), colors):
     ax.plot(X[labels_dbscan == cluster, 0], X[labels_dbscan == cluster, 1], 'w', markerfacecolor=c, marker='.')
 ax.set_title('DBSCAN')
@@ -83,7 +82,6 @@ plt.text(-1.35, 0, 'AMI: %.1f' % mi_dbscan)
 
 # DBSCAN with subsampling
 ax = fig.add_subplot(1, 2, 2)
-print(len(np.unique(labels_subsampled)), len(colors))
 for cluster, c in zip(np.unique(labels_subsampled), colors):
     ax.plot(X[labels_subsampled == cluster, 0], X[labels_subsampled == cluster, 1], 'w', markerfacecolor=c, marker='.')
 ax.set_title('DBSCAN with subsampling')

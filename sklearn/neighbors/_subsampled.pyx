@@ -5,44 +5,50 @@
 #
 # License: BSD 3 clause
 
+import warnings
+
 cimport cython
 from libcpp.vector cimport vector
 from libcpp.pair cimport pair
-from libc.stdlib cimport rand
+from libc.stdlib cimport rand, srand
 from libcpp.algorithm cimport sort as stdsort
 
 cimport numpy as np
 import numpy as np
 
 from ..metrics.pairwise import paired_distances, check_pairwise_arrays, \
-    PAIRED_DISTANCES, paired_euclidean_distances
+    PAIRED_DISTANCES
 from ._base import UnsupervisedMixin
 from ..base import TransformerMixin, BaseEstimator
-from ..utils import check_random_state
 from ..utils.validation import check_is_fitted
 from ..utils.validation import check_array
 
 np.import_array()
 
-import time
-
-def subsample(double s,
+def subsample(np.float s,
               np.int32_t n,
-              np.int32_t d,
+              np.int32_t n_train,
+              object random_state,
               np.ndarray[np.int32_t, ndim=1, mode='c'] rows,
               np.ndarray[np.int32_t, ndim=1, mode='c'] cols
              ):
+    
+    if random_state is not None:
+        srand(random_state)
 
     cdef np.int32_t i, _, cnt = 0
 
+    # Sample s * n neighbors per point
     for i in range(n):
-        # Explicity set each point as its own neighbor
-        rows[cnt] = i
-        cols[cnt] = i
-        cnt += 1
+        # if explicit_diagonal:
+        #     # This ensures that the neighborhood matrix has an
+        #     # explicit diagonal
+        #     rows[cnt] = i
+        #     cols[cnt] = i
+        #     cnt += 1
         
         # Sample neighbors
-        for _ in range(int(s * n)):
+        for _ in range(int(s * n_train)):
             rows[cnt] = i
             cols[cnt] = rand() % n
             cnt += 1
@@ -56,7 +62,7 @@ def sort_by_data(int n,
                 ):
 
     cdef np.int32_t i, j, start, end, row = 0
-    cdef vector[pair[np.npy_float, np.int32_t]] dist_column
+    cdef vector[pair[np.npy_double, np.int32_t]] dist_column
 
     for i in range(m):
         # Fill in indptr array
@@ -105,10 +111,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         take two arrays from X as input and return a value indicating
         the distance between them.
 
-    random_state : int, RandomState instance, default=None
-        Seeds the random sampling of lists of vertices. Use an int to
-        make the randomness deterministic.
-        See :term:`Glossary <random_state>`.
+    random_seed : int, default=None
+        Seeds the random sampling of lists of vertices.
 
     Attributes
     ----------
@@ -116,10 +120,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         Training set
 
     n_train_ : int
-        Number of training samples
-
-    random_state_ : numpy.RandomState
-        Pseudo random number generator object used during initialization.
+        Number of training samples        
 
     References
     ----------
@@ -132,12 +133,12 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
     Each pair of points is sampled uniformly with probability s.
     """
 
-    def __init__(self, s=0.1, eps=None, metric='euclidean',
-                 random_state=None):
+    def __init__(self, s=0.1, eps=None, metric='euclidean', random_state=None):
         self.s = s
         self.eps = eps
         self.metric = metric
         self.random_state = random_state
+        # RANDOM STATE???
         self._check_parameters()
 
     def _check_parameters(self):
@@ -157,7 +158,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         self.fit_X_ = check_array(X, accept_sparse='csr')
         self.n_train_ = self.fit_X_.shape[0]
-        self.random_state_ = check_random_state(self.random_state)
 
         return self
 
@@ -179,11 +179,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         check_is_fitted(self)
 
-        return self.subsampled_neighbors(X, self.s, self.eps, self.metric,
-                                         self.random_state_)
+        return self.subsampled_neighbors(X)
 
-    def subsampled_neighbors(self, X, s, eps=None, metric='euclidean',
-                             random_state=None):
+    def subsampled_neighbors(self, X):
         """Compute the subsampled sparse distance matrix of the neighboring
         points of X in fit_X.
 
@@ -207,10 +205,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
             take two arrays from X as input and return a value indicating
             the distance between them.
 
-        random_state : int, RandomState instance, default=None
-            Seeds the random sampling of lists of vertices. Use an int to
-            make the randomness deterministic.
-            See :term:`Glossary <random_state>`.
+        random_seed : int
+            Seeds the random sampling of lists of vertices.
 
         Returns
         -------
@@ -225,29 +221,44 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         X, fit_X = check_pairwise_arrays(X, self.fit_X_, accept_sparse='csr')
         
         n, d = X.shape
-        n_neighbors = int(s * n) * n + n
+        n_neighbors = int(self.s * self.n_train_) * n
+
+        # Allocate arrays
+        rows = np.full(n_neighbors, -1, dtype=np.int32)
+        cols = np.full(n_neighbors, -1, dtype=np.int32)
+        indptr = np.zeros(n + 1, dtype=np.int32)
+
+        # if n != self.n_train_ and self.explicit_diagonal:
+        #     warnings.warn('Cannot set explicit diagonal if computing neighbors '
+        #                   'between matrices of different dimensions.',
+        #                   ChangedBehaviorWarning)
+        #     self.explicit_diagonal = False
+
+        # Allocate space for setting an explicit diagonal
+        # if self.explicit_diagonal:
+        #     print("explicit_diagonal")
+        #     n_neighbors += n
         
         # No edges sampled
         if n_neighbors < 1:
-            return csr_matrix((n, n), dtype=np.float)
+            return csr_matrix((n, self.n_train_), dtype=np.float)
 
-        rows = np.full(n_neighbors, -1, dtype=np.int32)
-        cols = np.full(n_neighbors, -1, dtype=np.int32)
-        subsample(s, n, d, rows, cols)
+        subsample(self.s, n, self.n_train_, self.random_state, rows, cols)
 
-        distances = paired_distances(X[rows], X[cols], metric=metric)
+        distances = paired_distances(X[rows], fit_X[cols], metric=self.metric)
         
-        if eps is not None:
-            eps_neighb = np.where(distances <= eps)[0]
+        # Keep only neighbors within epsilon-neighborhood
+        if self.eps is not None:
+            eps_neighb = np.where(distances <= self.eps)
             rows = rows[eps_neighb]
             cols = cols[eps_neighb]
             distances = distances[eps_neighb]
      
-        indptr = np.zeros(n + 1, dtype=np.int32)
+        # Sort each row in data by distance for sparse matrix efficiency
         sort_by_data(n, rows.shape[0], distances, rows, cols, indptr)
 
         neighborhood = csr_matrix((distances, cols, indptr),
-                                  shape=(n, n),
+                                  shape=(n, self.n_train_),
                                   dtype=np.float)
         
         return neighborhood
