@@ -7,7 +7,7 @@
 # written for the scikit-learn project
 # License: BSD
 
-__all__ = ['KDTree', 'Test']
+__all__ = ['KDTree']
 
 DOC_DICT = {'BinaryTree': 'KDTree', 'binary_tree': 'kd_tree'}
 
@@ -21,10 +21,6 @@ include "_binary_tree.pxi"
 cdef class KDTree(BinaryTree):
     __doc__ = CLASS_DOC.format(**DOC_DICT)
     pass
-
-class Test:
-    def __init__(self):
-        pass
 
 
 #----------------------------------------------------------------------
