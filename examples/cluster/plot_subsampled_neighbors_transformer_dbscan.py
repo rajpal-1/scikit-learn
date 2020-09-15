@@ -23,6 +23,7 @@ from numpy.random import multivariate_normal
 # Generate sample data
 
 random_state = 0
+np.random.seed(random_state)
 
 batch_size = 45
 n_features = 2
@@ -71,6 +72,7 @@ colors = ['blue', 'green', 'red']
 
 # DBSCAN
 ax = fig.add_subplot(1, 2, 1)
+ax.plot(X[:, 0], X[:, 1], 'w', marker='.')
 for cluster, c in zip(np.unique(labels_dbscan), colors):
     ax.plot(X[labels_dbscan == cluster, 0], X[labels_dbscan == cluster, 1], 'w', markerfacecolor=c, marker='.')
 ax.set_title('DBSCAN')
@@ -82,6 +84,7 @@ plt.text(-1.35, 0, 'AMI: %.1f' % mi_dbscan)
 
 # DBSCAN with subsampling
 ax = fig.add_subplot(1, 2, 2)
+ax.plot(X[:, 0], X[:, 1], 'w', marker='.')
 for cluster, c in zip(np.unique(labels_subsampled), colors):
     ax.plot(X[labels_subsampled == cluster, 0], X[labels_subsampled == cluster, 1], 'w', markerfacecolor=c, marker='.')
 ax.set_title('DBSCAN with subsampling')

@@ -25,18 +25,18 @@ from ..utils.validation import check_array
 
 np.import_array()
 
-def subsample(np.float s,
-              np.int32_t n,
-              np.int32_t n_train,
+def subsample(np.npy_float32 s,
+              np.npy_int32 n,
+              np.npy_int32 n_train,
               object random_state,
-              np.ndarray[np.int32_t, ndim=1, mode='c'] rows,
-              np.ndarray[np.int32_t, ndim=1, mode='c'] cols
+              np.ndarray[np.npy_int32, ndim=1, mode='c'] rows,
+              np.ndarray[np.npy_int32, ndim=1, mode='c'] cols
              ):
     
     if random_state is not None:
         srand(random_state)
 
-    cdef np.int32_t i, _, cnt = 0
+    cdef np.npy_int32 i, _, cnt = 0
 
     # Sample s * n neighbors per point
     for i in range(n):
@@ -55,14 +55,14 @@ def subsample(np.float s,
 
 def sort_by_data(int n,
                  int m,
-                 np.ndarray[double, ndim=1, mode='c'] distances,
-                 np.ndarray[np.int32_t, ndim=1, mode='c'] rows,
-                 np.ndarray[np.int32_t, ndim=1, mode='c'] cols,
-                 np.ndarray[np.int32_t, ndim=1, mode='c'] indptr
+                 np.ndarray[np.npy_float32, ndim=1, mode='c'] distances,
+                 np.ndarray[np.npy_int32, ndim=1, mode='c'] rows,
+                 np.ndarray[np.npy_int32, ndim=1, mode='c'] cols,
+                 np.ndarray[np.npy_int32, ndim=1, mode='c'] indptr
                 ):
 
-    cdef np.int32_t i, j, start, end, row = 0
-    cdef vector[pair[np.npy_double, np.int32_t]] dist_column
+    cdef np.npy_int32 i, j, start, end, row = 0
+    cdef vector[pair[np.npy_float32, np.npy_int32]] dist_column
 
     for i in range(m):
         # Fill in indptr array
@@ -241,11 +241,12 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         
         # No edges sampled
         if n_neighbors < 1:
-            return csr_matrix((n, self.n_train_), dtype=np.float)
+            return csr_matrix((n, self.n_train_))
 
         subsample(self.s, n, self.n_train_, self.random_state, rows, cols)
 
         distances = paired_distances(X[rows], fit_X[cols], metric=self.metric)
+        distances = distances.astype(np.float32, copy=False)
         
         # Keep only neighbors within epsilon-neighborhood
         if self.eps is not None:
@@ -258,8 +259,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         sort_by_data(n, rows.shape[0], distances, rows, cols, indptr)
 
         neighborhood = csr_matrix((distances, cols, indptr),
-                                  shape=(n, self.n_train_),
-                                  dtype=np.float)
+                                  shape=(n, self.n_train_))
         
         return neighborhood
 
