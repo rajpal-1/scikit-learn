@@ -16,12 +16,9 @@ from libcpp.algorithm cimport sort as stdsort
 cimport numpy as np
 import numpy as np
 
-from ..metrics.pairwise import paired_distances, check_pairwise_arrays, \
-    PAIRED_DISTANCES
-from ._base import UnsupervisedMixin
+from ..metrics.pairwise import paired_distances, PAIRED_DISTANCES
 from ..base import TransformerMixin, BaseEstimator
 from ..utils.validation import check_is_fitted
-from ..utils.validation import check_array
 
 np.import_array()
 
@@ -90,8 +87,7 @@ def sort_by_data(int n,
             cols[j] = dist_column[j].second
 
 
-class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
-                                     BaseEstimator):
+class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
     """Compute subsampled sparse distance matrix of neighboring points in X.
 
     Parameters
@@ -154,9 +150,9 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         return self
 
-    def _fit(self, X):
+    def fit(self, X, Y=None):
 
-        self.fit_X_ = check_array(X, accept_sparse='csr')
+        self.fit_X_ = self._validate_data(X, accept_sparse='csr')
         self.n_train_ = self.fit_X_.shape[0]
 
         return self
@@ -218,8 +214,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         from scipy.sparse import csr_matrix
 
-        X, fit_X = check_pairwise_arrays(X, self.fit_X_, accept_sparse='csr')
-        
+        X = self._validate_data(X, accept_sparse='csr')
+
         n, d = X.shape
         n_neighbors = int(self.s * self.n_train_) * n
 
@@ -241,11 +237,11 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         
         # No edges sampled
         if n_neighbors < 1:
-            return csr_matrix((n, self.n_train_))
+            return csr_matrix((n, self.n_train_), dtype=X.dtype)
 
         subsample(self.s, n, self.n_train_, self.random_state, rows, cols)
 
-        distances = paired_distances(X[rows], fit_X[cols], metric=self.metric)
+        distances = paired_distances(X[rows], self.fit_X_[cols], metric=self.metric)
         distances = distances.astype(np.float32, copy=False)
         
         # Keep only neighbors within epsilon-neighborhood
@@ -259,7 +255,8 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
         sort_by_data(n, rows.shape[0], distances, rows, cols, indptr)
 
         neighborhood = csr_matrix((distances, cols, indptr),
-                                  shape=(n, self.n_train_))
+                                  shape=(n, self.n_train_),
+                                  dtype=X.dtype)
         
         return neighborhood
 

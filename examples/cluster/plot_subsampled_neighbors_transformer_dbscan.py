@@ -29,6 +29,7 @@ batch_size = 45
 n_features = 2
 centers = [[0]*n_features, [-1]*n_features, [0,-1]*int(n_features/2)]
 X, labels = datasets.make_blobs(n_samples=3000, n_features=n_features, centers=centers, cluster_std=0.1)
+X = X.astype(np.float64)
 
 # #############################################################################
 # Hyperparameters
