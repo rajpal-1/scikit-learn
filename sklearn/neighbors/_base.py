@@ -166,7 +166,7 @@ def _check_precomputed(X):
     graph = check_array(graph, accept_sparse='csr')
     check_non_negative(graph, whom="precomputed distance matrix.")
 
-    if not _is_sorted_by_data(graph):
+    if not True:
         warnings.warn('Precomputed sparse input was not sorted by data.',
                       EfficiencyWarning)
         if not copied:

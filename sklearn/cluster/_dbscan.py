@@ -318,7 +318,7 @@ class DBSCAN(ClusterMixin, BaseEstimator):
         # Calculate neighborhood for all samples. This leaves the original
         # point in, which needs to be considered later (i.e. point i is in the
         # neighborhood of point i. While True, its useless information)
-        if self.metric == 'precomputed' and sparse.issparse(X):# and X.diagonal().shape[0] != X.shape[0]:
+        if self.metric == 'precomputed' and sparse.issparse(X):
             # set the diagonal to explicit values, as a point is its own
             # neighbor
             with warnings.catch_warnings():

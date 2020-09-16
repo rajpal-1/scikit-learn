@@ -11,9 +11,9 @@ from sklearn import datasets
 from sklearn.utils._testing import assert_array_almost_equal, assert_raises
 
 # Toy samples
-X = [[1, 2, 3], [2, 3, 4], [3, 4, 5], [6, 7, 8]]
+X = [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
 X_csr = csr_matrix(X)
-X2 = [[6], [5], [4], [3]]
+X2 = [[6.0], [5.0], [4.0], [3.0]]
 X2_csr = csr_matrix(X2)
 X_fit = [[5.6, 6.4, 3.0, 3.6], [7.8, 9.0, 4.7, 4.1], [1.5, 2.9, 0.4, 1.5]]
 X_transform = [[3.0, 3.0, 1.5, 6.2], [7.7, 3.3, 0.4, 9.3]]
