@@ -9,15 +9,13 @@ import numpy as np
 
 from ..metrics.pairwise import paired_distances, check_pairwise_arrays, \
     PAIRED_DISTANCES
-from ._base import UnsupervisedMixin
 from ..base import TransformerMixin, BaseEstimator
 from ..utils import check_random_state
 from ..utils.validation import check_is_fitted
 from ..utils.validation import check_array
 
 
-class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
-                                     BaseEstimator):
+class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
     """Compute subsampled sparse distance matrix of neighboring points in X.
 
     Parameters
@@ -85,7 +83,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, UnsupervisedMixin,
 
         return self
 
-    def _fit(self, X):
+    def fit(self, X, Y=None):
 
         self.fit_X_ = check_array(X, accept_sparse='csr')
         self.n_train_ = self.fit_X_.shape[0]
