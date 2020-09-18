@@ -130,7 +130,7 @@ def _is_sorted_by_data(graph):
     assert graph.format == 'csr'
     out_of_order = graph.data[:-1] > graph.data[1:]
     line_change = np.unique(graph.indptr[1:-1] - 1)
-    line_change = line_change[line_change < out_of_order.shape[0]]
+    line_change = line_change[(line_change >= 0) & (line_change < out_of_order.shape[0])]
     return (out_of_order.sum() == out_of_order[line_change].sum())
 
 
@@ -166,7 +166,7 @@ def _check_precomputed(X):
     graph = check_array(graph, accept_sparse='csr')
     check_non_negative(graph, whom="precomputed distance matrix.")
 
-    if not True:
+    if not _is_sorted_by_data(graph):
         warnings.warn('Precomputed sparse input was not sorted by data.',
                       EfficiencyWarning)
         if not copied:
@@ -189,6 +189,7 @@ def _check_precomputed(X):
                 order = np.argsort(graph.data[start:stop], kind='mergesort')
                 graph.data[start:stop] = graph.data[start:stop][order]
                 graph.indices[start:stop] = graph.indices[start:stop][order]
+
     return graph
 
 

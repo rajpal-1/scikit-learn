@@ -3,6 +3,7 @@ from ._base import NeighborsBase
 from ._base import KNeighborsMixin
 from ._base import RadiusNeighborsMixin
 from ..utils.validation import _deprecate_positional_args
+from ._base import _is_sorted_by_data
 
 
 class NearestNeighbors(KNeighborsMixin,

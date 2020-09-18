@@ -12,6 +12,14 @@ from ..utils.random import check_random_state
 from ..base import TransformerMixin, BaseEstimator
 from ..utils.validation import check_is_fitted
 
+def mask_firstocc_v2(a):
+    sidx = a.argsort()
+    b = a[sidx]
+    mask = np.r_[False,b[:-1] == b[1:]]
+    out = np.empty(len(a), dtype=bool)
+    out[sidx] = mask
+    return out
+
 
 class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
     """Compute subsampled sparse distance matrix of neighboring points in X.
@@ -148,15 +156,14 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
 
         # Sample edges
         rows = np.repeat(np.arange(n), n_neighbors)
-        cols = self.random_state_.randint(n, size=n * n_neighbors)
+        cols = self.random_state_.randint(self.n_train_, size=n * n_neighbors)
         
         # No edges sampled
         if n_neighbors < 1:
-            return csr_matrix((n, self.n_train_), dtype=X.dtype)
+            return csr_matrix((n, self.n_train_))
 
         distances = paired_distances(X[rows], self.fit_X_[cols], metric=self.metric)
-        distances = distances.astype(np.float32, copy=False)
-        
+
         # Keep only neighbors within epsilon-neighborhood
         if self.eps is not None:
             eps_neighb = np.where(distances <= self.eps)
@@ -164,18 +171,24 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
             cols = cols[eps_neighb]
             distances = distances[eps_neighb]
 
-        indptr = np.full(n + 1, rows.shape[0], dtype=np.int32)
-        indptr[:rows[-1] + 2] = np.bincount(np.array(rows) + 1).cumsum()
-     
-        # Sort each row in data by distance for sparse matrix efficiency
-        for start, stop in zip(indptr, indptr[1:]):
+        line_changes = np.bincount(rows + 1).cumsum()
+
+        is_dupe = np.zeros(rows.shape[0], dtype=bool)
+        for start, stop in zip(line_changes, line_changes[1:]):
             order = np.argsort(distances[start:stop], kind='mergesort')
             distances[start:stop] = distances[start:stop][order]
             cols[start:stop] = cols[start:stop][order]
+            is_dupe[start:stop] = mask_firstocc_v2(cols[start:stop])
+
+        # Dedupe
+        rows = rows[~is_dupe]
+        cols = cols[~is_dupe]
+        distances = distances[~is_dupe]
+
+        indptr = np.bincount(rows + 1, minlength=n + 1).cumsum()
 
         neighborhood = csr_matrix((distances, cols, indptr),
-                                  shape=(n, self.n_train_),
-                                  dtype=X.dtype)
+                                  shape=(n, self.n_train_))
         
         return neighborhood
 
