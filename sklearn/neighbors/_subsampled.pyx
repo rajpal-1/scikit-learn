@@ -162,7 +162,10 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
         if n_neighbors < 1:
             return csr_matrix((n, self.n_train_))
 
+        import time
+        t0 = time.time()
         distances = paired_distances(X[rows], self.fit_X_[cols], metric=self.metric)
+        print(time.time()-t0)
 
         # Keep only neighbors within epsilon-neighborhood
         if self.eps is not None:

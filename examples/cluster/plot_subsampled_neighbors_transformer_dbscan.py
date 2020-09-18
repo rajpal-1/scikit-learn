@@ -38,7 +38,7 @@ from numpy.random import multivariate_normal
 np.random.seed(0)
 
 centers = [[-2,-1], [0,0], [0,-2]]
-X, labels = datasets.make_blobs(n_samples=30000, centers=centers, cluster_std=0.2)
+X, labels = datasets.make_blobs(n_samples=3000, centers=centers, cluster_std=0.2)
 X = X.astype(np.float64)
 
 # #############################################################################
@@ -47,7 +47,7 @@ X = X.astype(np.float64)
 eps = 0.3
 min_samples = 20
 min_samples_sub = 2
-s = 0.01
+s = 0.1
 
 # #############################################################################
 # Compute clustering with DBSCAN 
