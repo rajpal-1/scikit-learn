@@ -154,10 +154,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
         if n_neighbors < 1:
             return csr_matrix((n, self.n_train_))
 
-        import time
-        t0 = time.time()
         distances = paired_distances(X[rows], self.fit_X_[cols], metric=self.metric)
-        print(time.time()-t0)
 
         # Keep only neighbors within epsilon-neighborhood
         if self.eps is not None:
@@ -166,7 +163,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
             cols = cols[eps_neighb]
             distances = distances[eps_neighb]
 
-        t0 = time.time()
         line_changes = np.bincount(rows + 1).cumsum()
         is_dupe = np.zeros(rows.shape[0], dtype=bool)
 
@@ -188,7 +184,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
         rows = rows[~is_dupe]
         cols = cols[~is_dupe]
         distances = distances[~is_dupe]
-        print("s2", time.time() - t0)
 
         indptr = np.bincount(rows + 1, minlength=n + 1).cumsum()
 
