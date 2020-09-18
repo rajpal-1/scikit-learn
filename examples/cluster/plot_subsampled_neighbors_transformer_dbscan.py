@@ -38,7 +38,7 @@ from numpy.random import multivariate_normal
 np.random.seed(0)
 
 centers = [[-2,-1], [0,0], [0,-2]]
-X, labels = datasets.make_blobs(n_samples=3000, centers=centers, cluster_std=0.2)
+X, labels = datasets.make_blobs(n_samples=30000, centers=centers, cluster_std=0.2)
 X = X.astype(np.float64)
 
 # #############################################################################
@@ -57,6 +57,7 @@ t0 = time.time()
 dbscan.fit(X)
 labels_dbscan = dbscan.labels_
 t_dbscan = time.time() - t0
+print('t_dbscan', t_dbscan)
 print(len(dbscan.core_sample_indices_), len(labels_dbscan[labels_dbscan==-1]), len(labels_dbscan))
 rand_dbscan = adjusted_rand_score(labels_dbscan, labels)
 mi_dbscan = adjusted_mutual_info_score(labels_dbscan, labels)
@@ -69,11 +70,10 @@ dbscan_sub = DBSCAN(eps=eps, min_samples=min_samples_sub, metric='precomputed')
 snt = SubsampledNeighborsTransformer(s=s, eps=eps)
 t0 = time.time()
 X_sub = snt.fit_transform(X)
-t1 = time.time()
 dbscan_sub.fit(X_sub)
-print(time.time() - t1)
 labels_sub = dbscan_sub.labels_
 t_sub = time.time() - t0
+print('t_sub', t_sub)
 print(len(dbscan_sub.core_sample_indices_), len(labels_sub[labels_sub==-1]), len(labels_sub))
 rand_sub = adjusted_rand_score(labels_sub, labels)
 mi_sub = adjusted_mutual_info_score(labels_sub, labels)

@@ -12,14 +12,6 @@ from ..utils.random import check_random_state
 from ..base import TransformerMixin, BaseEstimator
 from ..utils.validation import check_is_fitted
 
-def mask_firstocc_v2(a):
-    sidx = a.argsort()
-    b = a[sidx]
-    mask = np.r_[False,b[:-1] == b[1:]]
-    out = np.empty(len(a), dtype=bool)
-    out[sidx] = mask
-    return out
-
 
 class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
     """Compute subsampled sparse distance matrix of neighboring points in X.
@@ -174,19 +166,29 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
             cols = cols[eps_neighb]
             distances = distances[eps_neighb]
 
+        t0 = time.time()
         line_changes = np.bincount(rows + 1).cumsum()
-
         is_dupe = np.zeros(rows.shape[0], dtype=bool)
+
+        # Loop over each row in our neighborhood graph
         for start, stop in zip(line_changes, line_changes[1:]):
-            order = np.argsort(distances[start:stop], kind='mergesort')
-            distances[start:stop] = distances[start:stop][order]
-            cols[start:stop] = cols[start:stop][order]
-            is_dupe[start:stop] = mask_firstocc_v2(cols[start:stop])
+            # Sort each row by distance
+            dist_order = np.argsort(distances[start:stop], kind='mergesort')
+            distances[start:stop] = distances[start:stop][dist_order]
+            cols[start:stop] = cols[start:stop][dist_order]
+
+            # Sort column indices and label duplicates
+            # When consecutive elements in sorted array are equal, 
+            # it means there is a duplicate
+            col_order = np.argsort(cols[start:stop], kind='mergesort')
+            cols_tmp = cols[start:stop][col_order]
+            is_dupe[start:stop][col_order[1:]] = cols_tmp[:-1] == cols_tmp[1:]
 
         # Dedupe
         rows = rows[~is_dupe]
         cols = cols[~is_dupe]
         distances = distances[~is_dupe]
+        print("s2", time.time() - t0)
 
         indptr = np.bincount(rows + 1, minlength=n + 1).cumsum()
 
