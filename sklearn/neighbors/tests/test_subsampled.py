@@ -30,16 +30,15 @@ n_iris = iris.data.shape[0]
 def test_sample_toy_fit_nonsparse_transform_nonsparse():
     # Test with non-sparse matrix
     n = SubsampledNeighborsTransformer(s=1., eps=5., random_state=0)
-    expected_result = csr_matrix(([1.732051, 1.732051, 1.732051],
-                                  ([0, 2, 2], [1, 1, 1])),
+    expected_result = csr_matrix(([1.732051, 1.732051],
+                                  ([0, 2], [1, 1])),
                                  shape=(4, 4))
     assert_array_almost_equal(n.fit_transform(X).toarray(),
                               expected_result.toarray())
 
-    expected_result = csr_matrix(([1.0, 3.0, 2.0, 2.0, 2.0, 2.0,
-                                   1.0, 1.0, 1.0, 1.0, 3.0, 3.0],
-                                  ([0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3],
-                                   [1, 3, 3, 3, 3, 3, 1, 3, 1, 2, 0, 0])),
+    expected_result = csr_matrix(([1.0, 3.0, 2.0, 1.0, 1.0, 1.0, 3.0],
+                                  ([0, 0, 1, 2, 2, 3, 3], 
+                                   [1, 3, 3, 1, 3, 2, 0])),
                                  shape=(4, 4))
     assert_array_equal(n.fit_transform(X2).toarray(),
                        expected_result.toarray())
@@ -100,19 +99,17 @@ def test_sample_toy_fit_nonsparse_transform_sparse():
 def test_sample_toy_noncsr():
     # Fit and transform with non-CSR sparse matrices
     n = SubsampledNeighborsTransformer(0.8, random_state=4)
-    expected_result = csr_matrix(([3.464102, 3.464102, 8.660254, 1.732051,
-                                   3.464102, 5.196152, 5.196152, 6.928203,
-                                   8.660254],
-                                  ([0, 0, 0, 1, 2, 2, 3, 3, 3],
-                                   [2, 2, 3, 0, 0, 3, 2, 1, 0])),
+    expected_result = csr_matrix(([3.464102, 8.660254, 1.732051, 3.464102, 
+                                   5.196152, 5.196152, 6.928203, 8.660254],
+                                  ([0, 0, 1, 2, 2, 3, 3, 3], 
+                                   [2, 3, 0, 0, 3, 2, 1, 0])),
                                  shape=(4, 4))
     assert_array_almost_equal(n.fit(X_csr.tocoo()).transform(
         X_csr.tolil()).toarray(), expected_result.toarray())
 
-    expected_result = csr_matrix(([2.0, 2.0, 3.0, 1.0, 1.0, 2.0, 1.0, 2.0,
-                                   3.0],
-                                  ([0, 0, 0, 1, 2, 2, 3, 3, 3],
-                                   [2, 2, 3, 0, 3, 0, 2, 1, 0])),
+    expected_result = csr_matrix(([2.0, 3.0, 1.0, 1.0, 2.0, 1.0, 2.0, 3.0],
+                                  ([0, 0, 1, 2, 2, 3, 3, 3], 
+                                   [2, 3, 0, 3, 0, 2, 1, 0])),
                                  shape=(4, 4))
     assert_array_equal(n.fit(X2_csr.todok()).transform(
                        X2_csr.tocsc()).toarray(), expected_result.toarray())
@@ -183,12 +180,12 @@ def test_iris_euclidean():
     n = SubsampledNeighborsTransformer(0.4, metric='euclidean',
                                        random_state=42)
     assert_almost_equal(np.mean(n.fit(iris.data).transform(iris.data)),
-                        1.01, decimal=2)
+                        0.836, decimal=2)
 
     n = SubsampledNeighborsTransformer(0.4, eps=2.0, metric='euclidean',
                                        random_state=42)
     assert_almost_equal(np.mean(n.fit(iris.data).transform(iris.data)),
-                        0.17, decimal=2)
+                        0.147, decimal=2)
 
 
 def test_iris_cosine():
@@ -202,7 +199,7 @@ def test_iris_manhattan():
     # Manhattan distance
     n = SubsampledNeighborsTransformer(0.5, eps=10.0, metric='manhattan',
                                        random_state=42)
-    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 2.05, decimal=3)
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.613, decimal=3)
 
 
 def test_iris_callable():
@@ -211,7 +208,7 @@ def test_iris_callable():
         return np.mean(np.maximum(a, b))
     n = SubsampledNeighborsTransformer(0.5, eps=5.0, metric=fn,
                                        random_state=42)
-    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.909, decimal=3)
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.504, decimal=3)
 
 
 def test_iris_small_s():
@@ -233,18 +230,18 @@ def test_iris_small_s():
 def test_iris_large_s():
     # Large s
     n = SubsampledNeighborsTransformer(2.0, random_state=42)
-    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 5.05, decimal=3)
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 2.18, decimal=3)
 
     # Large s
     n = SubsampledNeighborsTransformer(2.0, eps=2.5, random_state=42)
-    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.193, decimal=3)
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 0.52, decimal=3)
 
 
 def test_iris_small_eps():
     # Small eps
     n = SubsampledNeighborsTransformer(0.5, eps=0.1, random_state=42)
-    expected_result = csr_matrix(([0.1, 0.1, 0.1, 0.1],
-                                 ([50, 127, 133, 133], [133, 41, 50, 50])),
+    expected_result = csr_matrix(([0.1, 0.1, 0.1],
+                                 ([50, 127, 133], [133, 41, 50])),
                                  shape=(n_iris, n_iris))
     assert_array_almost_equal(n.fit_transform(iris.data).toarray(),
                               expected_result.toarray())
@@ -253,7 +250,7 @@ def test_iris_small_eps():
 def test_iris_large_eps():
     # Large eps
     n = SubsampledNeighborsTransformer(0.8, eps=100., random_state=42)
-    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 2.02, decimal=3)
+    assert_almost_equal(np.mean(n.fit_transform(iris.data)), 1.399, decimal=3)
 
 
 def test_iris_no_edges():
