@@ -97,13 +97,11 @@ def dbscan(X, eps=0.5, *, min_samples=5, metric='minkowski',
     labels : ndarray of shape (n_samples,)
         Cluster labels for each point.  Noisy samples are given the label -1.
 
-    See also
+    See Also
     --------
-    DBSCAN
-        An estimator interface for this clustering algorithm.
-    OPTICS
-        A similar estimator interface clustering at multiple values of eps. Our
-        implementation is optimized for memory usage.
+    DBSCAN : An estimator interface for this clustering algorithm.
+    OPTICS : A similar estimator interface clustering at multiple values of
+        eps. Our implementation is optimized for memory usage.
 
     Notes
     -----
@@ -232,10 +230,9 @@ class DBSCAN(ClusterMixin, BaseEstimator):
     >>> clustering
     DBSCAN(eps=3, min_samples=2)
 
-    See also
+    See Also
     --------
-    OPTICS
-        A similar clustering at multiple values of eps. Our implementation
+    OPTICS : A similar clustering at multiple values of eps. Our implementation
         is optimized for memory usage.
 
     Notes
@@ -336,7 +333,6 @@ class DBSCAN(ClusterMixin, BaseEstimator):
         # This has worst case O(n^2) memory complexity
         neighborhoods = neighbors_model.radius_neighbors(X,
                                                          return_distance=False)
-
         if sample_weight is None:
             n_neighbors = np.array([len(neighbors)
                                     for neighbors in neighborhoods])
@@ -361,6 +357,7 @@ class DBSCAN(ClusterMixin, BaseEstimator):
         else:
             # no core samples
             self.components_ = np.empty((0, X.shape[1]))
+
         return self
 
     def fit_predict(self, X, y=None, sample_weight=None):
