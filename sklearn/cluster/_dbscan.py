@@ -17,8 +17,6 @@ from ..base import BaseEstimator, ClusterMixin
 from ..utils.validation import _check_sample_weight, _deprecate_positional_args
 from ..neighbors import NearestNeighbors
 
-from ..neighbors._base import _is_sorted_by_data
-
 from ._dbscan_inner import dbscan_inner
 
 

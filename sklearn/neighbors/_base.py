@@ -130,7 +130,8 @@ def _is_sorted_by_data(graph):
     assert graph.format == 'csr'
     out_of_order = graph.data[:-1] > graph.data[1:]
     line_change = np.unique(graph.indptr[1:-1] - 1)
-    line_change = line_change[(line_change >= 0) & (line_change < out_of_order.shape[0])]
+    line_change = line_change[(line_change >= 0) &
+                              (line_change < out_of_order.shape[0])]
     return (out_of_order.sum() == out_of_order[line_change].sum())
 
 
