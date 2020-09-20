@@ -131,7 +131,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
             the distance between them.
 
     random_state : int or numpy.RandomState, default=None
-        A pseudo random number generator object or a seed for it if int. 
+        A pseudo random number generator object or a seed for it if int.
         See :term: `Glossary <random_state>`.
 
         Returns
@@ -152,12 +152,13 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
         # Sample edges
         rows = np.repeat(np.arange(n), n_neighbors)
         cols = self.random_state_.randint(self.n_train_, size=n * n_neighbors)
-        
+
         # No edges sampled
         if n_neighbors < 1:
             return csr_matrix((n, self.n_train_))
 
-        distances = paired_distances(X[rows], self.fit_X_[cols], metric=self.metric)
+        distances = paired_distances(X[rows], self.fit_X_[cols],
+                                     metric=self.metric)
 
         # Keep only neighbors within epsilon-neighborhood
         if self.eps is not None:
@@ -177,7 +178,7 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
             cols[start:stop] = cols[start:stop][dist_order]
 
             # Sort column indices and label duplicates
-            # When consecutive elements in sorted array are equal, 
+            # When consecutive elements in sorted array are equal,
             # it means there is a duplicate
             col_order = np.argsort(cols[start:stop], kind='mergesort')
             cols_tmp = cols[start:stop][col_order]
@@ -192,7 +193,6 @@ class SubsampledNeighborsTransformer(TransformerMixin, BaseEstimator):
 
         neighborhood = csr_matrix((distances, cols, indptr),
                                   shape=(n, self.n_train_))
-        
         return neighborhood
 
     def _more_tags(self):
