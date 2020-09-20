@@ -46,7 +46,7 @@ X = X.astype(np.float64)
 eps = 0.3
 min_samples = 20
 min_samples_sub = 2
-s = 0.01
+s = 0.1
 
 # #############################################################################
 # Compute clustering with DBSCAN
