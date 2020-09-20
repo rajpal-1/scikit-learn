@@ -3,9 +3,6 @@
 Comparison of DBSCAN and DBSCAN with Subsampling
 ====================================================================
 
-<<<<<<< HEAD
-We want to compare the performance of DBSCAN and DBSCAN with subsampling.
-=======
 We want to compare the performance of DBSCAN and DBSCAN with subsampling:
 subsampled DBSCAN is faster but the speedup is more apparent with larger
 datasets. To run DBSCAN with subsampling, we use
@@ -20,7 +17,6 @@ In order to compare the results of DBSCAN and DBSCAN with subsampling,
 we must set `min_samples` for the latter to `min_samples * s`
 because each point in the subsampled neighborhood graph will have on
 expectation `s` of its original neighbors.
->>>>>>> example
 """
 print(__doc__)
 
@@ -34,10 +30,23 @@ from sklearn.neighbors import SubsampledNeighborsTransformer
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score
 from sklearn import datasets
 
+# #############################################################################
+# Generate sample data
+
+np.random.seed(0)
+
+centers = [[-2, -1], [0, 0], [0, -2]]
+X, labels = datasets.make_blobs(n_samples=30000, centers=centers,
+                                cluster_std=0.2)
+X = X.astype(np.float64)
+
+# #############################################################################
+# Hyperparameters
+
 eps = 0.3
 min_samples = 20
 min_samples_sub = 2
-s = 0.1
+s = 0.01
 
 # #############################################################################
 # Compute clustering with DBSCAN
@@ -47,7 +56,6 @@ t0 = time.time()
 dbscan.fit(X)
 labels_dbscan = dbscan.labels_
 t_dbscan = time.time() - t0
-print('t_dbscan', t_dbscan)
 rand_dbscan = adjusted_rand_score(labels_dbscan, labels)
 mi_dbscan = adjusted_mutual_info_score(labels_dbscan, labels)
 
@@ -61,7 +69,6 @@ X_sub = snt.fit_transform(X)
 dbscan_sub.fit(X_sub)
 labels_sub = dbscan_sub.labels_
 t_sub = time.time() - t0
-print('t_sub', t_sub)
 rand_sub = adjusted_rand_score(labels_sub, labels)
 mi_sub = adjusted_mutual_info_score(labels_sub, labels)
 
