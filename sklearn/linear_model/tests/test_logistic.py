@@ -16,7 +16,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder, StandardScaler, label_binarize
 from sklearn.utils import compute_class_weight, _IS_32BIT
 from sklearn.utils._testing import assert_raise_message
 from sklearn.utils._testing import assert_raises
@@ -34,7 +34,7 @@ from sklearn.linear_model._logistic import (
     _logistic_regression_path, LogisticRegressionCV,
     _logistic_loss_and_grad, _logistic_grad_hess,
     _multinomial_grad_hess, _logistic_loss,
-    _log_reg_scoring_path)
+    _log_reg_scoring_path, _multinomial_loss_grad)
 
 X = [[-1, 0], [0, 1], [1, 1]]
 X_sp = sp.csr_matrix(X)
@@ -354,7 +354,7 @@ def test_consistency_path():
     # can't test with fit_intercept=True since LIBLINEAR
     # penalizes the intercept
     for solver in ['sag', 'saga']:
-        coefs, Cs, _ = f(_logistic_regression_path)(
+        coefs, Cs, _, _ = f(_logistic_regression_path)(
             X, y, Cs=Cs, fit_intercept=False, tol=1e-5, solver=solver,
             max_iter=1000, multi_class='ovr', random_state=0)
         for i, C in enumerate(Cs):
@@ -369,7 +369,7 @@ def test_consistency_path():
     # test for fit_intercept=True
     for solver in ('lbfgs', 'newton-cg', 'liblinear', 'sag', 'saga'):
         Cs = [1e3]
-        coefs, Cs, _ = f(_logistic_regression_path)(
+        coefs, Cs, _, _ = f(_logistic_regression_path)(
             X, y, Cs=Cs, tol=1e-6, solver=solver,
             intercept_scaling=10000., random_state=0, multi_class='ovr')
         lr = LogisticRegression(C=Cs[0], tol=1e-4,
@@ -424,33 +424,34 @@ def test_liblinear_dual_random_state():
 
 
 def test_logistic_loss_and_grad():
-    X_ref, y = make_classification(n_samples=20, random_state=0)
-    n_features = X_ref.shape[1]
-
+    X_ref, y = make_classification(n_samples=21, random_state=0)
     X_sp = X_ref.copy()
     X_sp[X_sp < .1] = 0
     X_sp = sp.csr_matrix(X_sp)
+    clf = LogisticRegression(random_state=0).fit(X_ref, y)
     for X in (X_ref, X_sp):
-        w = np.zeros(n_features)
+        for X_offset in (None, np.asarray(X.mean(axis=0)).squeeze()):
+            w = clf.coef_.copy().ravel()
 
-        # First check that our derivation of the grad is correct
-        loss, grad = _logistic_loss_and_grad(w, X, y, alpha=1.)
-        approx_grad = optimize.approx_fprime(
-            w, lambda w: _logistic_loss_and_grad(w, X, y, alpha=1.)[0], 1e-3
-        )
-        assert_array_almost_equal(grad, approx_grad, decimal=2)
+            # First check that our derivation of the grad is correct
+            loss, grad = _logistic_loss_and_grad(w, X, y, alpha=1.,
+                                                 X_offset=X_offset)
+            approx_grad = optimize.approx_fprime(
+                w, lambda w: _logistic_loss_and_grad(
+                    w, X, y, alpha=1., X_offset=X_offset)[0], 1e-3
+            )
+            assert_array_almost_equal(grad, approx_grad, decimal=2)
 
-        # Second check that our intercept implementation is good
-        w = np.zeros(n_features + 1)
-        loss_interp, grad_interp = _logistic_loss_and_grad(
-            w, X, y, alpha=1.
-        )
-        assert_array_almost_equal(loss, loss_interp)
-
-        approx_grad = optimize.approx_fprime(
-            w, lambda w: _logistic_loss_and_grad(w, X, y, alpha=1.)[0], 1e-3
-        )
-        assert_array_almost_equal(grad_interp, approx_grad, decimal=2)
+            # Second check that our intercept implementation is good
+            w = np.hstack([clf.coef_.copy().ravel(), clf.intercept_])
+            loss_interp, grad_interp = _logistic_loss_and_grad(
+                w, X, y, alpha=1., X_offset=X_offset
+            )
+            approx_grad = optimize.approx_fprime(
+                w, lambda w: _logistic_loss_and_grad(
+                    w, X, y, alpha=1., X_offset=X_offset)[0], 1e-3
+            )
+            assert_array_almost_equal(grad_interp, approx_grad, decimal=2)
 
 
 def test_logistic_grad_hess():
@@ -500,6 +501,33 @@ def test_logistic_grad_hess():
         grad_interp_2, hess = _logistic_grad_hess(w, X, y, alpha=1.)
         assert_array_almost_equal(loss_interp, loss_interp_2)
         assert_array_almost_equal(grad_interp, grad_interp_2)
+
+
+def test_multinomial_loss_grad():
+    n_features = 10
+    n_classes = 3
+    X_ref, y = make_classification(n_features=n_features, n_classes=n_classes,
+                                   random_state=0, n_informative=6)
+
+    X_sp = X_ref.copy()
+    X_sp[X_sp < .1] = 0
+    X_sp = sp.csr_matrix(X_sp)
+    sample_weight = np.ones(X_ref.shape[0])
+    Y = label_binarize(y, [0, 1, 2])
+    lr = LogisticRegression(random_state=0).fit(X_ref, y)
+    for X in (X_ref, X_sp):
+        for X_offset in (None, X.mean(axis=0)):
+
+            w = np.hstack([lr.coef_, lr.intercept_.reshape(-1, 1)])
+            loss, grad, p = _multinomial_loss_grad(
+                w, X, Y, alpha=1., X_scale=None, sample_weight=sample_weight,
+                X_offset=X_offset)
+            approx_grad = optimize.approx_fprime(
+                w.ravel(), lambda w: _multinomial_loss_grad(
+                    w, X, Y, alpha=1., X_scale=None, X_offset=X_offset,
+                    sample_weight=sample_weight)[0], 1e-5
+            )
+            assert_array_almost_equal(grad, approx_grad, decimal=3)
 
 
 def test_logistic_cv():
@@ -952,9 +980,10 @@ def test_logistic_regression_multinomial():
         assert clf_w.coef_.shape == (n_classes, n_features)
 
         # Compare solutions between lbfgs and the other solvers
-        assert_allclose(ref_i.coef_, clf_i.coef_, rtol=1e-2)
-        assert_allclose(ref_w.coef_, clf_w.coef_, rtol=1e-2)
-        assert_allclose(ref_i.intercept_, clf_i.intercept_, rtol=1e-2)
+        assert_allclose(ref_i.coef_, clf_i.coef_, rtol=1e-1, atol=1e-4)
+        assert_allclose(ref_w.coef_, clf_w.coef_, rtol=1e-1, atol=1e-4)
+        assert_allclose(ref_i.intercept_, clf_i.intercept_, rtol=1e-1,
+                        atol=1e-4)
 
     # Test that the path give almost the same results. However since in this
     # case we take the average of the coefs after fitting across all the
@@ -1674,7 +1703,7 @@ def test_logistic_regression_path_coefs_multinomial():
                                n_redundant=0, n_clusters_per_class=1,
                                random_state=0, n_features=2)
     Cs = [.00001, 1, 10000]
-    coefs, _, _ = _logistic_regression_path(X, y, penalty='l1', Cs=Cs,
+    coefs, _, _, _ = _logistic_regression_path(X, y, penalty='l1', Cs=Cs,
                                             solver='saga', random_state=0,
                                             multi_class='multinomial')
 
@@ -1826,6 +1855,45 @@ def test_scores_attribute_layout_elasticnet():
             avg_score_lr = cross_val_score(lr, X, y, cv=cv).mean()
             assert avg_scores_lrcv[i, j] == pytest.approx(avg_score_lr)
 
+
+def test_illconditioned_lbfgs():
+    # check that lbfgs converges even with ill-conditioned X
+    X, y = make_classification(n_samples=100, n_features=60, random_state=0)
+    X[:, 1] += 10000
+    X[:, 0] *= 10000
+    lr_pre = LogisticRegression(random_state=0, precondition=True)
+    with pytest.warns(None) as record:
+        lr_pre.fit(X, y)
+    assert len(record) == 0
+    loss_pre = _logistic_loss(
+        np.hstack([lr_pre.coef_.ravel(), lr_pre.intercept_]),
+        X, 2 * y - 1, 1)
+
+    lr = LogisticRegression(random_state=0, precondition=False)
+    with pytest.warns(ConvergenceWarning):
+        lr.fit(X, y)
+    loss = _logistic_loss(np.hstack([lr.coef_.ravel(), lr.intercept_]),
+                          X, 2 * y - 1, 1)
+    assert loss_pre < loss
+
+
+def test_logistic_loss_preconditioning():
+    # check that _logistic_loss is invariant wrt whether we precondition.
+    X, y = make_classification(n_samples=100, n_features=60, random_state=0)
+    X[:, 1] += 10000
+    lr = LogisticRegression(random_state=0, precondition=True, max_iter=1000)
+    lr.fit(X, y)
+    loss = _logistic_loss(np.hstack([lr.coef_.ravel(), lr.intercept_]),
+                          X, 2 * y - 1, 1)
+    assert_almost_equal(loss, lr.objective_value_)
+    # do full preconditioning
+    X_mean = X.mean(axis=0)
+    X_std = X.std(axis=0)
+    X_pre = (X - X_mean) / X_std
+    w_scaled = lr.coef_.ravel() * X_std
+    w_pre = np.hstack([w_scaled, lr.intercept_ + np.inner(lr.coef_, X_mean)])
+    loss_pre = _logistic_loss(w_pre, X_pre, 2 * y - 1, 1, X_scale=X_std)
+    assert_almost_equal(loss, loss_pre)
 
 @pytest.mark.parametrize("fit_intercept", [False, True])
 def test_multinomial_identifiability_on_iris(fit_intercept):
