@@ -10,6 +10,7 @@ import numpy as np
 import numbers
 from joblib import Parallel, effective_n_jobs
 
+from ..utils.deprecation import deprecated
 from ..utils.metaestimators import if_delegate_has_method
 from ..utils.metaestimators import _safe_split
 from ..utils.validation import check_is_fitted
@@ -159,6 +160,10 @@ class RFE(SelectorMixin, MetaEstimatorMixin, BaseEstimator):
         self.importance_getter = importance_getter
         self.verbose = verbose
 
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
     @property
     def _estimator_type(self):
         return self.estimator._estimator_type
@@ -375,7 +380,7 @@ class RFE(SelectorMixin, MetaEstimatorMixin, BaseEstimator):
         return {'poor_score': True,
                 'allow_nan': estimator_tags.get('allow_nan', True),
                 'requires_y': True,
-                }
+                'estimator_type': estimator_tags.get('estimator_type', None)}
 
 
 class RFECV(RFE):

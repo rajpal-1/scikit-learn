@@ -369,12 +369,17 @@ General Concepts
 
         .. glossary::
 
-            ``_estimator_type``
-                This string-valued attribute identifies an estimator as being a
-                classifier, regressor, etc. It is set by mixins such as
-                :class:`base.ClassifierMixin`, but needs to be more explicitly
-                adopted on a :term:`meta-estimator`.  Its value should usually be
-                checked by way of a helper such as :func:`base.is_classifier`.
+            ``_estimator_type``		
+                 This string-valued attribute identifies an estimator as being a		
+                 classifier, regressor, etc. It is set by mixins such as		
+                 :class:`base.ClassifierMixin`, but needs to be more explicitly		
+                 adopted on a :term:`meta-estimator`.  Its value should usually be		
+                 checked by way of a helper such as :func:`base.is_classifier`.
+
+                .. deprecated:: 0.24
+
+                The `_estimator_type` attribute is deprecated in 0.24. From 0.26
+                onward, the `estimator_type` estimator tag must be used instead.
 
             ``_pairwise``
                 This boolean attribute indicates whether the data (``X``) passed to
@@ -817,7 +822,7 @@ Class APIs and Estimator Types
 
         Classifiers must store a :term:`classes_` attribute after fitting,
         and usually inherit from :class:`base.ClassifierMixin`, which sets
-        their :term:`_estimator_type` attribute.
+        their :ref:`estimator_type <estimator_tags>` tag.
 
         A classifier can be distinguished from other estimators with
         :func:`~base.is_classifier`.
@@ -955,7 +960,7 @@ Class APIs and Estimator Types
         with :term:`continuous` output values.
 
         Regressors usually inherit from :class:`base.RegressorMixin`, which
-        sets their :term:`_estimator_type` attribute.
+        sets their :ref:`estimator_type <estimator_tags>` tag.
 
         A regressor can be distinguished from other estimators with
         :func:`~base.is_regressor`.

@@ -458,13 +458,18 @@ For example, cross-validation in :class:`model_selection.GridSearchCV` and
 on a classifier, but not otherwise. Similarly, scorers for average precision
 that take a continuous prediction need to call ``decision_function`` for classifiers,
 but ``predict`` for regressors. This distinction between classifiers and regressors
-is implemented using the ``_estimator_type`` attribute, which takes a string value.
+is implemented using the ``estimator_type`` tag, which takes a string value.
 It should be ``"classifier"`` for classifiers and ``"regressor"`` for
 regressors and ``"clusterer"`` for clustering methods, to work as expected.
 Inheriting from ``ClassifierMixin``, ``RegressorMixin`` or ``ClusterMixin``
 will set the attribute automatically.  When a meta-estimator needs to distinguish
-among estimator types, instead of checking ``_estimator_type`` directly, helpers
+among estimator types, instead of checking ``estimator_type`` tag, helpers
 like :func:`base.is_classifier` should be used.
+
+.. deprecated:: 0.24
+
+    The `_estimator_type` attribute is deprecated in 0.24. From 0.26
+    onward, the `estimator_type` estimator tag must be used instead.
 
 Specific models
 ---------------
@@ -526,6 +531,21 @@ allow_nan (default=False)
 binary_only (default=False)
     whether estimator supports binary classification but lacks multi-class
     classification support.
+
+estimator_type (default=None)
+    string-valued identifier of an estimator as being a
+    classifier, regressor, etc. It is set by mixins such
+    as :class:`~base.ClassifierMixin`, but needs to be
+    more explicitly adopted on a :term:`meta-estimator`.
+    Its value should usually be checked by way of a
+    helper such as :func:`base.is_classifier`. The
+    available estimator types are:
+
+    - classifier (e.g. :class:`~tree.DecisionTreeClassifier`)
+    - regressor (e.g. :class:`~tree.DecisionTreeRegressor`)
+    - clusterer (e.g. :class:`~cluster.KMeans`)
+    - density_estimator (e.g. :class:`~mixture.BayesianGaussianMixture`)
+    - outlier_detector (e.g. :class:`~ensemble.IsolationForest`)
 
 multilabel (default=False)
     whether the estimator supports multilabel output

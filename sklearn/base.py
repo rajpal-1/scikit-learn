@@ -15,6 +15,7 @@ import numpy as np
 from . import __version__
 from ._config import get_config
 from .utils import _IS_32BIT
+from .utils.deprecation import deprecated
 from .utils.validation import check_X_y
 from .utils.validation import check_array
 from .utils._estimator_html_repr import estimator_html_repr
@@ -39,6 +40,7 @@ _DEFAULT_TAGS = {
     'preserves_dtype': [np.float64],
     'requires_y': False,
     'pairwise': False,
+    'estimator_type': None
     }
 
 
@@ -487,7 +489,13 @@ class BaseEstimator:
 class ClassifierMixin:
     """Mixin class for all classifiers in scikit-learn."""
 
-    _estimator_type = "classifier"
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
+    @property
+    def _estimator_type(self):
+        return "classifier"
 
     def score(self, X, y, sample_weight=None):
         """
@@ -517,12 +525,19 @@ class ClassifierMixin:
         return accuracy_score(y, self.predict(X), sample_weight=sample_weight)
 
     def _more_tags(self):
-        return {'requires_y': True}
+        return {'requires_y': True, 'estimator_type': 'classifier'}
 
 
 class RegressorMixin:
     """Mixin class for all regression estimators in scikit-learn."""
-    _estimator_type = "regressor"
+
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
+    @property
+    def _estimator_type(self):
+        return "regressor"
 
     def score(self, X, y, sample_weight=None):
         """Return the coefficient of determination :math:`R^2` of the
@@ -571,12 +586,19 @@ class RegressorMixin:
         return r2_score(y, y_pred, sample_weight=sample_weight)
 
     def _more_tags(self):
-        return {'requires_y': True}
+        return {'requires_y': True, 'estimator_type': 'regressor'}
 
 
 class ClusterMixin:
     """Mixin class for all cluster estimators in scikit-learn."""
-    _estimator_type = "clusterer"
+
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
+    @property
+    def _estimator_type(self):
+        return "clusterer"
 
     def fit_predict(self, X, y=None):
         """
@@ -601,7 +623,7 @@ class ClusterMixin:
         return self.labels_
 
     def _more_tags(self):
-        return {"preserves_dtype": []}
+        return {"preserves_dtype": [], "estimator_type": "clusterer"}
 
 
 class BiclusterMixin:
@@ -721,7 +743,14 @@ class TransformerMixin:
 
 class DensityMixin:
     """Mixin class for all density estimators in scikit-learn."""
-    _estimator_type = "DensityEstimator"
+
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
+    @property
+    def _estimator_type(self):
+        return "density_estimator"
 
     def score(self, X, y=None):
         """Return the score of the model on the data `X`.
@@ -740,10 +769,20 @@ class DensityMixin:
         """
         pass
 
+    def _more_tags(self):
+        return {'estimator_type': 'density_estimator'}
+
 
 class OutlierMixin:
     """Mixin class for all outlier detection estimators in scikit-learn."""
-    _estimator_type = "outlier_detector"
+
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
+    @property
+    def _estimator_type(self):
+        return "outlier_detector"
 
     def fit_predict(self, X, y=None):
         """Perform fit on X and returns labels for X.
@@ -765,6 +804,9 @@ class OutlierMixin:
         """
         # override for transductive outlier detectors like LocalOulierFactor
         return self.fit(X).predict(X)
+
+    def _more_tags(self):
+        return {'estimator_type': 'outlier_detector'}
 
 
 class MetaEstimatorMixin:
@@ -798,7 +840,7 @@ def is_classifier(estimator):
     out : bool
         True if estimator is a classifier and False otherwise.
     """
-    return getattr(estimator, "_estimator_type", None) == "classifier"
+    return _is_estimator_type(estimator, "classifier")
 
 
 def is_regressor(estimator):
@@ -814,7 +856,7 @@ def is_regressor(estimator):
     out : bool
         True if estimator is a regressor and False otherwise.
     """
-    return getattr(estimator, "_estimator_type", None) == "regressor"
+    return _is_estimator_type(estimator, "regressor")
 
 
 def is_outlier_detector(estimator):
@@ -830,7 +872,45 @@ def is_outlier_detector(estimator):
     out : bool
         True if estimator is an outlier detector and False otherwise.
     """
-    return getattr(estimator, "_estimator_type", None) == "outlier_detector"
+    return _is_estimator_type(estimator, "outlier_detector")
+
+
+def _is_estimator_type(estimator, estimator_type):
+    """Returns True if the estimator is of the given type.
+
+    Parameters
+    ----------
+    estimator : object
+        Estimator object to test.
+
+    estimator_type : str
+        Estimator type to test.
+
+    Returns
+    -------
+    out : bool
+        True if `estimator` is of the given type and False otherwise.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        has_estimator_type_attribute = hasattr(estimator, "_estimator_type")
+        estimator_type_attribute = getattr(estimator, "_estimator_type", None)
+
+    if hasattr(estimator, "_get_tags") and callable(estimator._get_tags):
+        estimator_type_tag = estimator._get_tags().get("estimator_type", None)
+    else:
+        estimator_type_tag = None
+
+    if has_estimator_type_attribute:
+        if estimator_type_attribute != estimator_type_tag:
+            warnings.warn("_estimator_type attribute was deprecated in 0.24 "
+                          "and will be removed in 0.26. Set the estimator "
+                          "tags of your estimator instead.", FutureWarning)
+
+        return estimator_type_attribute == estimator_type
+
+    # Use the estimator_type tag when the attribute is not present
+    return estimator_type_tag == estimator_type
 
 
 def _is_pairwise(estimator):

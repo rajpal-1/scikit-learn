@@ -57,7 +57,7 @@ class MockClassifier:
         return self
 
     def _get_tags(self):
-        return {}
+        return {'estimator_type': 'classifier'}
 
 
 def test_rfe_features_importance():
@@ -282,7 +282,6 @@ def test_rfecv_grid_scores_size():
 
 def test_rfe_estimator_tags():
     rfe = RFE(SVC(kernel='linear'))
-    assert rfe._estimator_type == "classifier"
     # make sure that cross-validation is stratified
     iris = load_iris()
     score = cross_val_score(rfe, iris.data, iris.target)
@@ -491,3 +490,15 @@ def test_multioutput(ClsRFE):
     clf = RandomForestClassifier(n_estimators=5)
     rfe_test = ClsRFE(clf)
     rfe_test.fit(X, y)
+
+
+# TODO: Remove in 0.26 when the _estimator_type attribute is removed
+def test_rfe_estimator_type_deprecated():
+    # Assert that the _estimator_type attribute is deprecated
+    rfe = RFE(SVC())
+
+    msg = ("Attribute _estimator_type was deprecated in "
+           "version 0.24 and will be removed in 0.26.")
+
+    with pytest.warns(FutureWarning, match=msg):
+        assert rfe._estimator_type == "classifier"

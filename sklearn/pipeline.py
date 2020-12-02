@@ -219,6 +219,10 @@ class Pipeline(_BaseComposition):
             return self.named_steps[ind]
         return est
 
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
     @property
     def _estimator_type(self):
         return self.steps[-1][1]._estimator_type
@@ -622,9 +626,16 @@ class Pipeline(_BaseComposition):
         return self.steps[-1][-1].classes_
 
     def _more_tags(self):
-        # check if first estimator expects pairwise input
-        estimator_tags = self.steps[0][1]._get_tags()
-        return {'pairwise': estimator_tags.get('pairwise', False)}
+        # Check if first estimator expects pairwise input
+        transformer = self.steps[0][1]
+        # The transformers may be None
+        transformer_tags = transformer._get_tags() if transformer else {}
+
+        estimator = self.steps[-1][1]
+        estimator_tags = estimator._get_tags()
+
+        return {'pairwise': transformer_tags.get('pairwise', False),
+                'estimator_type': estimator_tags.get('estimator_type', None)}
 
     # TODO: Remove in 0.26
     # mypy error: Decorated property not supported

@@ -1264,3 +1264,14 @@ def test_feature_union_warns_unknown_transformer_weight():
     union = FeatureUnion(transformer_list, transformer_weights=weights)
     with pytest.raises(ValueError, match=expected_msg):
         union.fit(X, y)
+
+
+def test_rfe_estimator_type_deprecated():
+    # Assert that the _estimator_type attribute is deprecated
+    pipeline = Pipeline([("estimator", SVC())])
+
+    msg = ("Attribute _estimator_type was deprecated in "
+           "version 0.24 and will be removed in 0.26.")
+
+    with pytest.warns(FutureWarning, match=msg):
+        assert pipeline._estimator_type == "classifier"

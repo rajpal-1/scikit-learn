@@ -630,11 +630,16 @@ def test_multimetric_scorer_calls_method_once(scorers, expected_predict_count,
     predict_proba_func = Mock(return_value=proba)
     decision_function_func = Mock(return_value=pos_proba)
 
+    get_tags_func = Mock(return_value=dict(estimator_type="classifier"))
+
     mock_est.fit = fit_func
     mock_est.predict = predict_func
     mock_est.predict_proba = predict_proba_func
     mock_est.decision_function = decision_function_func
-    # add the classes that would be found during fit
+    mock_est._estimator_type = "classifier"
+    mock_est._get_tags = get_tags_func
+
+    # Add the classes that would be found during fit
     mock_est.classes_ = np.array([0, 1])
 
     scorer_dict = _check_multimetric_scoring(LogisticRegression(), scorers)

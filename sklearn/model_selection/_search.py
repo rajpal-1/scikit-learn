@@ -427,18 +427,21 @@ class BaseSearchCV(MetaEstimatorMixin, BaseEstimator, metaclass=ABCMeta):
         self.error_score = error_score
         self.return_train_score = return_train_score
 
+    # TODO: Remove in 0.26
+    # mypy error: Decorated property not supported
+    @deprecated("Attribute _estimator_type was deprecated in "  # type: ignore
+                "version 0.24 and will be removed in 0.26.")
     @property
     def _estimator_type(self):
         return self.estimator._estimator_type
 
     def _more_tags(self):
-        # allows cross-validation to see 'precomputed' metrics
+        # Allows cross-validation to see "precomputed" metrics
         estimator_tags = self.estimator._get_tags()
-        return {
-            'pairwise': estimator_tags.get('pairwise', False),
-            "_xfail_checks": {"check_supervised_y_2d":
-                              "DataConversionWarning not caught"},
-        }
+        return {'pairwise': estimator_tags.get('pairwise', False),
+                'estimator_type': estimator_tags.get('estimator_type', None),
+                '_xfail_checks': {'check_supervised_y_2d':
+                                  'DataConversionWarning not caught'}}
 
     # TODO: Remove in 0.26
     # mypy error: Decorated property not supported

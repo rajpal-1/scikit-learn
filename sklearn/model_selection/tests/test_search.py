@@ -113,6 +113,9 @@ class MockClassifier:
         self.foo_param = params['foo_param']
         return self
 
+    def _get_tags(self):
+        return {'estimator_type': 'classifier'}
+
 
 class LinearSVCNoScore(LinearSVC):
     """An LinearSVC classifier that has no score method."""
@@ -121,8 +124,10 @@ class LinearSVCNoScore(LinearSVC):
         raise AttributeError
 
 
-X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
-y = np.array([1, 1, 2, 2])
+# The number of samples per class need to be greater than or equal
+# to the number of splits for stratified cross-validation routines
+X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1], [-2, 1], [-1, 2]])
+y = np.array([1, 1, 1, 2, 2, 2])
 
 
 def assert_grid_iter_equals_getitem(grid):
@@ -2079,3 +2084,18 @@ def test_scalar_fit_param_compat(SearchCV, param_search):
         'scalar_param': 42,
     }
     model.fit(X_train, y_train, **fit_params)
+
+
+# TODO: Remove in 0.26 when the _estimator_type attribute is removed
+def test_search_cv_estimator_type_deprecated():
+    # Assert that the _estimator_type attribute is deprecated
+    estimator = SVC(kernel="linear")
+    param_grid = {"gamma": ["scale", "auto"]}
+
+    search = GridSearchCV(estimator, param_grid)
+
+    msg = ("Attribute _estimator_type was deprecated in "
+           "version 0.24 and will be removed in 0.26.")
+
+    with pytest.warns(FutureWarning, match=msg):
+        assert search._estimator_type == "classifier"
