@@ -15,6 +15,7 @@ from ._nearest_centroid import NearestCentroid
 from ._kde import KernelDensity
 from ._lof import LocalOutlierFactor
 from ._nca import NeighborhoodComponentsAnalysis
+from ._subsampled import SubsampledNeighborsTransformer
 from ._base import VALID_METRICS, VALID_METRICS_SPARSE
 
 __all__ = ['BallTree',
@@ -33,5 +34,6 @@ __all__ = ['BallTree',
            'KernelDensity',
            'LocalOutlierFactor',
            'NeighborhoodComponentsAnalysis',
+           'SubsampledNeighborsTransformer',
            'VALID_METRICS',
            'VALID_METRICS_SPARSE']

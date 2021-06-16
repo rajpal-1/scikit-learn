@@ -336,7 +336,6 @@ class DBSCAN(ClusterMixin, BaseEstimator):
         # This has worst case O(n^2) memory complexity
         neighborhoods = neighbors_model.radius_neighbors(X,
                                                          return_distance=False)
-
         if sample_weight is None:
             n_neighbors = np.array([len(neighbors)
                                     for neighbors in neighborhoods])
@@ -361,6 +360,7 @@ class DBSCAN(ClusterMixin, BaseEstimator):
         else:
             # no core samples
             self.components_ = np.empty((0, X.shape[1]))
+
         return self
 
     def fit_predict(self, X, y=None, sample_weight=None):
