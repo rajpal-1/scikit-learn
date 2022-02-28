@@ -132,6 +132,112 @@ def _check_targets(y_true, y_pred):
     return y_type, y_true, y_pred
 
 
+def _validate_multiclass_probabilistic_prediction(
+    y_true, y_prob, sample_weight, labels
+):
+    r"""Convert y_true and y_prob to shape [n_samples, n_classes]
+
+    1. Verify that y_true, y_prob, and sample_weights have the same first dim
+    2. Ensure 2 or more classes in y_true i.e. valid classification task. The
+       classes are provided by the labels argument, or inferred using y_true.
+       When inferring y_true is assumed binary if it has shape (n_samples, ).
+    3. Validate y_true, and y_prob have the same number of classes. Convert to
+       shape [n_samples, n_classes]/
+
+    Parameters
+    ----------
+    y_true : array-like or label indicator matrix
+        Ground truth (correct) labels for n_samples samples.
+
+    y_prob : array-like of float, shape=(n_samples, n_classes) or (n_samples,)
+        Predicted probabilities, as returned by a classifier's
+        predict_proba method. If ``y_prob.shape = (n_samples,)``
+        the probabilities provided are assumed to be that of the
+        positive class. The labels in ``y_prob`` are assumed to be
+        ordered lexicographically, as done by
+        :class:`preprocessing.LabelBinarizer`.
+
+    sample_weight : array-like of shape (n_samples,), default=None
+        Sample weights.
+
+    labels : array-like, default=None
+        If not provided, labels will be inferred from y_true. If ``labels``
+        is ``None`` and ``y_prob`` has shape (n_samples,) the labels are
+        assumed to be binary and are inferred from ``y_true``.
+
+    Returns
+    -------
+    transformed_labels : array of shape [n_samples, n_classes]
+
+    y_prob : array of shape [n_samples, n_classes]
+    """
+    y_prob = check_array(y_prob, ensure_2d=False)
+    check_consistent_length(y_prob, y_true, sample_weight)
+
+    lb = LabelBinarizer()
+
+    if labels is not None:
+        lb = lb.fit(labels)
+        # LabelBinarizer does not respect the order implied by labels, which
+        # can be misleading.
+        if not np.all(lb.classes_ == labels):
+            warnings.warn(
+                f"Labels passed were {labels}. But this function "
+                "assumes labels are ordered lexicographically. "
+                "Ensure that labels in y_prob are ordered as "
+                f"{lb.classes_}.",
+                UserWarning,
+            )
+    else:
+        lb = lb.fit(y_true)
+
+    if len(lb.classes_) == 1:
+        if labels is None:
+            raise ValueError(
+                "y_true contains only one label: "
+                f"{lb.classes_[0]}. Please provide the true "
+                "labels explicitly through the labels argument."
+            )
+        else:
+            raise ValueError(
+                "The labels array needs to contain at least two "
+                f"labels, got {lb.classes_}."
+            )
+
+    transformed_labels = lb.transform(y_true)
+
+    if transformed_labels.shape[1] == 1:
+        transformed_labels = np.append(
+            1 - transformed_labels, transformed_labels, axis=1
+        )
+
+    # If y_prob is of single dimension, assume y_true to be binary
+    if y_prob.ndim == 1:
+        y_prob = y_prob[:, np.newaxis]
+    if y_prob.shape[1] == 1:
+        y_prob = np.append(1 - y_prob, y_prob, axis=1)
+
+    # Check if dimensions are consistent.
+    transformed_labels = check_array(transformed_labels)
+    if len(lb.classes_) != y_prob.shape[1]:
+        if labels is None:
+            raise ValueError(
+                "y_true and y_prob contain different number of "
+                f"classes {transformed_labels.shape[1]}, "
+                f"{y_prob.shape[1]}. Please provide the true "
+                "labels explicitly through the labels argument. "
+                f"Classes found in y_true: {lb.classes_}"
+            )
+        else:
+            raise ValueError(
+                "The number of classes in labels is different "
+                "from that in y_prob. Classes found in "
+                f"labels: {lb.classes_}"
+            )
+
+    return transformed_labels, y_prob
+
+
 def _weighted_sum(sample_score, sample_weight, normalize=False):
     if normalize:
         return np.average(sample_score, weights=sample_weight)
@@ -2384,66 +2490,12 @@ def log_loss(
     C.M. Bishop (2006). Pattern Recognition and Machine Learning. Springer,
     p. 209.
     """
-    y_pred = check_array(y_pred, ensure_2d=False)
-    check_consistent_length(y_pred, y_true, sample_weight)
-
-    lb = LabelBinarizer()
-
-    if labels is not None:
-        lb.fit(labels)
-    else:
-        lb.fit(y_true)
-
-    if len(lb.classes_) == 1:
-        if labels is None:
-            raise ValueError(
-                "y_true contains only one label ({0}). Please "
-                "provide the true labels explicitly through the "
-                "labels argument.".format(lb.classes_[0])
-            )
-        else:
-            raise ValueError(
-                "The labels array needs to contain at least two "
-                "labels for log_loss, "
-                "got {0}.".format(lb.classes_)
-            )
-
-    transformed_labels = lb.transform(y_true)
-
-    if transformed_labels.shape[1] == 1:
-        transformed_labels = np.append(
-            1 - transformed_labels, transformed_labels, axis=1
-        )
+    transformed_labels, y_pred = _validate_multiclass_probabilistic_prediction(
+        y_true, y_pred, sample_weight, labels
+    )
 
     # Clipping
     y_pred = np.clip(y_pred, eps, 1 - eps)
-
-    # If y_pred is of single dimension, assume y_true to be binary
-    # and then check.
-    if y_pred.ndim == 1:
-        y_pred = y_pred[:, np.newaxis]
-    if y_pred.shape[1] == 1:
-        y_pred = np.append(1 - y_pred, y_pred, axis=1)
-
-    # Check if dimensions are consistent.
-    transformed_labels = check_array(transformed_labels)
-    if len(lb.classes_) != y_pred.shape[1]:
-        if labels is None:
-            raise ValueError(
-                "y_true and y_pred contain different number of "
-                "classes {0}, {1}. Please provide the true "
-                "labels explicitly through the labels argument. "
-                "Classes found in "
-                "y_true: {2}".format(
-                    transformed_labels.shape[1], y_pred.shape[1], lb.classes_
-                )
-            )
-        else:
-            raise ValueError(
-                "The number of classes in labels is different "
-                "from that in y_pred. Classes found in "
-                "labels: {0}".format(lb.classes_)
-            )
 
     # Renormalize
     y_pred /= y_pred.sum(axis=1)[:, np.newaxis]
@@ -2617,6 +2669,12 @@ def brier_score_loss(y_true, y_prob, *, sample_weight=None, pos_label=None):
     the greater label unless `y_true` is all 0 or all -1, in which case
     `pos_label` defaults to 1.
 
+    A more generalized form of Brier score is implemented in
+    :func:`multiclass_brier_score_loss` that is applicable to the multi-class
+    case as well. When used for the binary case, `multiclass_brier_score_loss`
+    returns Brier score that is exactly twice of the value returned by this
+    function.
+
     Read more in the :ref:`User Guide <brier_score_loss>`.
 
     Parameters
@@ -2676,7 +2734,8 @@ def brier_score_loss(y_true, y_prob, *, sample_weight=None, pos_label=None):
     if y_type != "binary":
         raise ValueError(
             "Only binary classification is supported. The type of the target "
-            f"is {y_type}."
+            f"is {y_type}. For the multiclass case, use "
+            "multiclass_brier_score_loss instead"
         )
 
     if y_prob.max() > 1:
@@ -2696,3 +2755,94 @@ def brier_score_loss(y_true, y_prob, *, sample_weight=None, pos_label=None):
             raise
     y_true = np.array(y_true == pos_label, int)
     return np.average((y_true - y_prob) ** 2, weights=sample_weight)
+
+
+def multiclass_brier_score_loss(y_true, y_prob, sample_weight=None, labels=None):
+    r"""Compute the Brier score loss.
+
+    The smaller the Brier score loss, the better, hence the naming with "loss".
+    The Brier score measures the mean squared difference between the predicted
+    probability and the actual outcome.
+
+    For :math:`N` samples with :math:`C` different classes, the multi-class
+    Brier score is defined as:
+
+    .. math::
+        \frac{1}{N}\sum_{i=1}^{N}\sum_{c=1}^{C}(y_{ic} - \hat{y}_{ic})^{2}
+
+    where :math:`y_{ic}` is 1 if observation `i` belongs to class `c`,
+    otherwise 0 and :math:`\hat{y}_{ic}` is the predicted probability of
+    observation `i` for class `c`. The probabilities for `c` classes for
+    observation `i` should sum to 1.
+
+    The Brier score always takes on a value between [0, 2]. For the
+    binary case however, there is a more common definition of Brier score
+    implemented in :func:`brier_score_loss` that is exactly half of the value
+    returned by this function, thereby having a range between [0, 1].
+
+    It can be decomposed as the sum of refinement loss and calibration loss.
+
+    The Brier score is appropriate for binary and categorical outcomes that
+    can be structured as true or false, but is inappropriate for ordinal
+    variables which can take on three or more values (this is because the
+    Brier score assumes that all possible outcomes are equivalently
+    "distant" from one another).
+
+    Read more in the :ref:`User Guide <brier_score_loss>`.
+
+    Parameters
+    ----------
+    y_true : array of shape (n_samples,)
+        True targets.
+
+    y_prob : array-like of float, shape=(n_samples, n_classes) or (n_samples,)
+        Predicted probabilities, as returned by a classifier's
+        predict_proba method. If ``y_prob.shape = (n_samples,)``
+        the probabilities provided are assumed to be that of the
+        positive class. The labels in ``y_prob`` are assumed to be
+        ordered lexicographically, as done by
+        :class:`preprocessing.LabelBinarizer`.
+
+    sample_weight : array-like of shape (n_samples,), default=None
+        Sample weights.
+
+    labels : array-like, default=None
+        If not provided, labels will be inferred from y_true. If ``labels``
+        is ``None`` and ``y_prob`` has shape (n_samples,) the labels are
+        assumed to be binary and are inferred from ``y_true``.
+
+    Returns
+    -------
+    score : float
+        Brier score loss.
+
+    References
+    ----------
+    .. [1] `Wikipedia entry for the Brier score
+            <https://en.wikipedia.org/wiki/Brier_score>`_.
+
+    Examples
+    --------
+    >>> from sklearn.metrics import multiclass_brier_score_loss
+    >>> multiclass_brier_score_loss([0, 1, 1, 0],
+    ...                             [0.1, 0.9, 0.8, 0.3])
+    0.074...
+    >>> multiclass_brier_score_loss(['eggs', 'ham', 'spam'], [[.8, .1, .1],
+    ...                                                       [.2, .7, .1],
+    ...                                                       [.2, .2, .6]])
+    0.146...
+    """
+    y_true = column_or_1d(y_true)
+
+    transformed_labels, y_prob = _validate_multiclass_probabilistic_prediction(
+        y_true, y_prob, sample_weight, labels
+    )
+
+    if y_prob.max() > 1:
+        raise ValueError("y_prob contains values greater than 1.")
+    if y_prob.min() < 0:
+        raise ValueError("y_prob contains values less than 0.")
+
+    return np.average(
+        np.sum((transformed_labels - y_prob) ** 2, axis=1), weights=sample_weight
+    )
