@@ -849,9 +849,6 @@ class BaseMultilayerPerceptron(BaseEstimator, metaclass=ABCMeta):
             )
         return True
 
-    def _validate_input(self, X, y, incremental, reset, sample_weight):
-        raise NotImplementedError("Subclass must implement _validate_input().")
-
 
 class MLPClassifier(ClassifierMixin, BaseMultilayerPerceptron):
     """Multi-layer Perceptron classifier.
