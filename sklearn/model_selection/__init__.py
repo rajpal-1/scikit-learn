@@ -1,7 +1,6 @@
 import typing
 
 from ._split import BaseCrossValidator
-from ._split import BaseShuffleSplit
 from ._split import KFold
 from ._split import GroupKFold
 from ._split import StratifiedKFold
@@ -19,6 +18,7 @@ from ._split import StratifiedGroupKFold
 from ._split import PredefinedSplit
 from ._split import train_test_split
 from ._split import check_cv
+from ._split import GroupTimeSeriesSplit
 
 from ._validation import cross_val_score
 from ._validation import cross_val_predict
@@ -45,7 +45,6 @@ if typing.TYPE_CHECKING:
 
 __all__ = [
     "BaseCrossValidator",
-    "BaseShuffleSplit",
     "GridSearchCV",
     "TimeSeriesSplit",
     "KFold",
@@ -63,8 +62,8 @@ __all__ = [
     "RandomizedSearchCV",
     "ShuffleSplit",
     "StratifiedKFold",
-    "StratifiedGroupKFold",
     "StratifiedShuffleSplit",
+    "StratifiedGroupKFold",
     "check_cv",
     "cross_val_predict",
     "cross_val_score",
@@ -74,6 +73,7 @@ __all__ = [
     "permutation_test_score",
     "train_test_split",
     "validation_curve",
+    "GroupTimeSeriesSplit",
 ]
 
 

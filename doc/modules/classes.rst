@@ -1189,6 +1189,7 @@ Splitter Classes
    model_selection.StratifiedShuffleSplit
    model_selection.StratifiedGroupKFold
    model_selection.TimeSeriesSplit
+   model_selection.GroupTimeSeriesSplit
 
 Splitter Functions
 ------------------
