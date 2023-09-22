@@ -198,6 +198,10 @@ Changelog
   the :class:`os.PathLike` interface, for instance, :class:`pathlib.Path`.
   :pr:`27468` by :user:`Yao Xiao <Charlie-XIAO>`.
 
+- |Enhancement| Allow :func:`datasets.make_spd_matrix` to generate several
+  matrices at once adding parameter n_samples.
+  :pr:`26437` by :user:`Quentin Barthélemy <qbarthelemy>`.
+
 :mod:`sklearn.decomposition`
 ............................
 
