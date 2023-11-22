@@ -1004,7 +1004,7 @@ def _test_ridge_cv(sparse_container):
     ridge_cv.predict(X)
 
     assert len(ridge_cv.coef_.shape) == 1
-    assert type(ridge_cv.intercept_) == np.float64
+    assert isinstance(ridge_cv.intercept_, np.float64)
 
     cv = KFold(5)
     ridge_cv.set_params(cv=cv)
@@ -1012,7 +1012,7 @@ def _test_ridge_cv(sparse_container):
     ridge_cv.predict(X)
 
     assert len(ridge_cv.coef_.shape) == 1
-    assert type(ridge_cv.intercept_) == np.float64
+    assert isinstance(ridge_cv.intercept_, np.float64)
 
 
 @pytest.mark.parametrize(
@@ -2062,3 +2062,53 @@ def test_ridge_sample_weight_consistency(
     assert_allclose(reg1.coef_, reg2.coef_)
     if fit_intercept:
         assert_allclose(reg1.intercept_, reg2.intercept_)
+
+
+@pytest.mark.parametrize("with_weights", [True, False])
+@pytest.mark.parametrize("scoring", ["neg_mean_squared_error", mean_squared_error])
+@pytest.mark.parametrize("n_targets", [1, 2])
+def test_ridge_cv_predictions_original_space(with_weights, scoring, n_targets):
+    """Check that predictions store in `cv_results_` are in the original space.
+
+    Non-regression test for:
+    https://github.com/scikit-learn/scikit-learn/issues/13998
+    """
+    rng = np.random.RandomState(42)
+    n_samples = 6
+    X, y = make_regression(n_samples=n_samples, n_targets=n_targets, random_state=42)
+    sample_weight = rng.randint(1, 4, n_samples) if with_weights else None
+    scoring_ = (
+        make_scorer(scoring, greater_is_better=False) if callable(scoring) else scoring
+    )
+
+    ridgecv_default_scoring = RidgeCV(store_cv_values=True, alphas=[10.0], scoring=None)
+    ridgecv_custom_scoring = RidgeCV(
+        store_cv_values=True, alphas=[10.0], scoring=scoring_
+    )
+    ridgecv_default_scoring.fit(X, y, sample_weight=sample_weight)
+    ridgecv_custom_scoring.fit(X, y, sample_weight=sample_weight)
+
+    y = y.ravel() if y.ndim == 2 else y
+    errors_default_scoring = ridgecv_default_scoring.cv_values_.ravel()
+    errors_custom_scoring = (y - ridgecv_custom_scoring.cv_values_.ravel()) ** 2
+    # FIXME: The errors is by default weighted with sample weights which should
+    # not be the case. Once a fix done for this case, we can remove the
+    # following lines. See #15648 for more details.
+    if sample_weight is not None:
+        errors_custom_scoring *= np.repeat(sample_weight, n_targets)
+
+    assert_allclose(errors_default_scoring, errors_custom_scoring)
+
+
+def test_ridge_cv_values_predictions_with_null_weights():
+    """Check the case when null weights are passed and predictions are stores in
+    `cv_values_`.
+
+    We should have `nan` but instead the `y_offset`.
+    """
+    x, y = make_regression(n_targets=1)
+    sample_weight = np.ones_like(y)
+    sample_weight[0] = 0.0
+    ridge_cv = RidgeCV(store_cv_values=True, scoring="neg_mean_squared_error")
+    ridge_cv.fit(x, y, sample_weight=sample_weight)
+    assert_allclose(ridge_cv.cv_values_[0], y[1:].mean(axis=0))

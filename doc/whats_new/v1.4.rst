@@ -390,6 +390,12 @@ Changelog
   proportional to the number of coefficients (`n_features * n_classes`).
   :pr:`27417` by :user:`Christian Lorentzen <lorentzenchr>`.
 
+- |Fix| Fixed a bug in :class:`linear_model.RidgeCV` where the predictions
+  stored in `cv_values_` where in the normalized space instead of the original
+  space.
+  :pr:`15854` by :user:`Jérôme Dockès <jeromedockes>` and
+  :user:`Guillaume Lemaitre <glemaitre>`.
+
 :mod:`sklearn.metrics`
 ......................
 
