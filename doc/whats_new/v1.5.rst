@@ -264,6 +264,11 @@ Changelog
 :mod:`sklearn.linear_model`
 ...........................
 
+- |Enhancement| The `solver="newton-cholesky"` in
+  :class:`linear_model.LogisticRegression` and
+  :class:`linear_model.LogisticRegressionCV` is extended to support the full
+  multinomial loss in a multiclass setting.
+
 - |Fix| :class:`linear_model.ElasticNet`, :class:`linear_model.ElasticNetCV`,
   :class:`linear_model.Lasso` and :class:`linear_model.LassoCV` now explicitly don't
   accept large sparse data formats. :pr:`27576` by :user:`Stefanie Senger
