@@ -268,6 +268,7 @@ Changelog
   :class:`linear_model.LogisticRegression` and
   :class:`linear_model.LogisticRegressionCV` is extended to support the full
   multinomial loss in a multiclass setting.
+  :pr:`28840` by :user:`Christian Lorentzen <lorentzenchr>`.
 
 - |Enhancement| Solver `"newton-cg"` in :class:`linear_model.LogisticRegression` and
   :class:`linear_model.LogisticRegressionCV` now emits information when `verbose` is
