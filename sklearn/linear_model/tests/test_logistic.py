@@ -695,7 +695,7 @@ def test_logistic_regression_solvers():
         )
 
 
-@pytest.mark.parametrize("fit_intercept", [False, False])
+@pytest.mark.parametrize("fit_intercept", [False, True])
 @pytest.mark.parametrize("multi_class", ["ovr", "multinomial"])
 def test_logistic_regression_solvers_multiclass(fit_intercept, multi_class):
     """Test solvers converge to the same result for multiclass problems."""
@@ -703,24 +703,26 @@ def test_logistic_regression_solvers_multiclass(fit_intercept, multi_class):
         n_samples=20, n_features=20, n_informative=10, n_classes=3, random_state=0
     )
     tol = 1e-7
-    params = dict(
-        fit_intercept=False, tol=tol, random_state=42, multi_class=multi_class
-    )
+    params = dict(fit_intercept=fit_intercept, random_state=42, multi_class=multi_class)
 
     # Override max iteration count for specific solvers to allow for
     # proper convergence.
-    solver_max_iter = {"sag": 1000, "saga": 10000}
+    solver_max_iter = {"lbfgs": 200, "sag": 10_000, "saga": 10_000}
+    solver_tol = {"sag": 1e-8, "saga": 1e-8}
 
     if multi_class == "multinomial":
         supported_solvers = set(SOLVERS) - set(["liblinear"])
     else:
-        supported_solvers = SOLVERS
+        supported_solvers = set(SOLVERS)
     if fit_intercept:
         supported_solvers -= set(["liblinear"])
 
     regressors = {
         solver: LogisticRegression(
-            solver=solver, max_iter=solver_max_iter.get(solver, 100), **params
+            solver=solver,
+            tol=solver_tol.get(solver, tol),
+            max_iter=solver_max_iter.get(solver, 100),
+            **params,
         ).fit(X, y)
         for solver in supported_solvers
     }
