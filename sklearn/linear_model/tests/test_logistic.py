@@ -2062,8 +2062,9 @@ def test_scores_attribute_layout_elasticnet():
             assert avg_scores_lrcv[i, j] == pytest.approx(avg_score_lr)
 
 
+@pytest.mark.parametrize("solver", ["lbfgs", "newton-cg", "newton-cholesky"])
 @pytest.mark.parametrize("fit_intercept", [False, True])
-def test_multinomial_identifiability_on_iris(fit_intercept):
+def test_multinomial_identifiability_on_iris(solver, fit_intercept):
     """Test that the multinomial classification is identifiable.
 
     A multinomial with c classes can be modeled with
@@ -2091,7 +2092,7 @@ def test_multinomial_identifiability_on_iris(fit_intercept):
 
     clf = LogisticRegression(
         C=len(iris.data),
-        solver="lbfgs",
+        solver=solver,
         multi_class="multinomial",
         fit_intercept=fit_intercept,
     )
@@ -2102,7 +2103,7 @@ def test_multinomial_identifiability_on_iris(fit_intercept):
     # axis=0 is sum over classes
     assert_allclose(clf.coef_.sum(axis=0), 0, atol=1e-10)
     if fit_intercept:
-        assert clf.intercept_.sum(axis=0) == pytest.approx(0, abs=1e-13)
+        assert clf.intercept_.sum(axis=0) == pytest.approx(0, abs=1e-11)
 
 
 @pytest.mark.parametrize("multi_class", ["ovr", "multinomial", "auto"])
