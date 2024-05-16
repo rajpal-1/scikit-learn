@@ -25,8 +25,12 @@ At this stage, this support is **considered experimental** and must be enabled
 explicitly as explained in the following.
 
 .. note::
-    Currently, only `cupy.array_api`, `array-api-strict`, `cupy`, and `PyTorch`
+    Currently, only `cupy.array_api`, `array-api-strict`, `cupy`, `dask.array`, and `PyTorch`
     are known to work with scikit-learn's estimators.
+
+    `dask.array` support is incomplete at the time of writing: some methods and
+    estimators may not work while we work out a way to handle Dask's lazy evaluation
+    semantics in a library-agnostic way.
 
 Example usage
 =============
