@@ -1115,7 +1115,7 @@ class Pipeline(_BaseComposition):
         return _VisualBlock(
             "serial",
             estimators,
-            names=names,
+            names=list(names),
             name_details=name_details,
             dash_wrapped=False,
         )
