@@ -731,7 +731,7 @@ def pairwise_distances_argmin_min(
         Valid values for metric are:
 
         - from scikit-learn: ['cityblock', 'cosine', 'euclidean', 'l1', 'l2',
-          'manhattan']
+          'manhattan', 'nan_euclidean']
 
         - from scipy.spatial.distance: ['braycurtis', 'canberra', 'chebyshev',
           'correlation', 'dice', 'hamming', 'jaccard', 'kulsinski',
@@ -777,7 +777,8 @@ def pairwise_distances_argmin_min(
     >>> distances
     array([1., 1.])
     """
-    X, Y = check_pairwise_arrays(X, Y)
+    force_all_finite = "allow-nan" if metric == "nan_euclidean" else True
+    X, Y = check_pairwise_arrays(X, Y, force_all_finite=force_all_finite)
 
     if axis == 0:
         X, Y = Y, X
@@ -878,7 +879,7 @@ def pairwise_distances_argmin(X, Y, *, axis=1, metric="euclidean", metric_kwargs
         Valid values for metric are:
 
         - from scikit-learn: ['cityblock', 'cosine', 'euclidean', 'l1', 'l2',
-          'manhattan']
+          'manhattan', 'nan_euclidean']
 
         - from scipy.spatial.distance: ['braycurtis', 'canberra', 'chebyshev',
           'correlation', 'dice', 'hamming', 'jaccard', 'kulsinski',
@@ -917,7 +918,8 @@ def pairwise_distances_argmin(X, Y, *, axis=1, metric="euclidean", metric_kwargs
     >>> pairwise_distances_argmin(X, Y)
     array([0, 1])
     """
-    X, Y = check_pairwise_arrays(X, Y)
+    force_all_finite = "allow-nan" if metric == "nan_euclidean" else True
+    X, Y = check_pairwise_arrays(X, Y, force_all_finite=force_all_finite)
 
     if axis == 0:
         X, Y = Y, X
