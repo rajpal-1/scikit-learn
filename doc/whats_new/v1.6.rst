@@ -74,6 +74,18 @@ Changelog
     :pr:`123456` by :user:`Joe Bloggs <joeongithub>`.
     where 123455 is the *pull request* number, not the issue number.
 
+:mod:`sklearn.metrics`
+......................
+
+- |Enhancement| Added zero division handling in :func:`metrics.balanced_accuracy_score`
+  to make balanced accuracy consistent with macro-average recall.
+  :pr:`28038` by :user:`Tenga Cortal <TengaCortal>`.
+
+- |Fix| :func:`metrics.balanced_accuracy_score` does not ignore `nan` due to
+  a division by zero when `y_pred` contains label not present in `y_true`.
+  It is thus equal to the average recall per class in this case also.
+  :pr:`28038` by :user:`Tenga Cortal <TengaCortal>`.
+
 Thanks to everyone who has contributed to the maintenance and improvement of
 the project since version 1.5, including:
 
