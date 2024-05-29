@@ -88,6 +88,12 @@ Changelog
   whether to raise an exception if a subset of the scorers in multimetric scoring fails
   or to return an error code. :pr:`28992` by :user:`Stefanie Senger <StefanieSenger>`.
 
+:mod:`sklearn.utils`
+....................
+
+- |Fix| :func:`~utils._safe_indexing` now works correctly for scipy sparse arrays with
+  scalar index. :pr:`28681` by :user:`Yao Xiao <Charlie-XIAO>`.
+
 Thanks to everyone who has contributed to the maintenance and improvement of
 the project since version 1.5, including:
 
