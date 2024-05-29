@@ -83,12 +83,21 @@ class BaseSGD(SparseCoefMixin, BaseEstimator, metaclass=ABCMeta):
     """Base class for SGD classification and regression."""
 
     _parameter_constraints: dict = {
+        "penalty": [StrOptions({"l2", "l1", "elasticnet"}), None],
+        "alpha": [Interval(Real, 0, None, closed="left")],
+        "C": [Interval(Real, 0, None, closed="right")],
+        "l1_ratio": [Interval(Real, 0, 1, closed="both")],
         "fit_intercept": ["boolean"],
         "max_iter": [Interval(Integral, 1, None, closed="left")],
         "tol": [Interval(Real, 0, None, closed="left"), None],
         "shuffle": ["boolean"],
-        "verbose": ["verbose"],
         "random_state": ["random_state"],
+        "verbose": ["verbose"],
+        "eta0": [Interval(Real, 0, None, closed="left")],
+        "power_t": [Interval(Real, None, None, closed="neither")],
+        "early_stopping": ["boolean"],
+        "validation_fraction": [Interval(Real, 0, 1, closed="neither")],
+        "n_iter_no_change": [Interval(Integral, 1, None, closed="left")],
         "warm_start": ["boolean"],
         "average": [Interval(Integral, 0, None, closed="left"), "boolean"],
     }
@@ -521,9 +530,6 @@ class BaseSGDClassifier(LinearClassifierMixin, BaseSGD, metaclass=ABCMeta):
     _parameter_constraints: dict = {
         **BaseSGD._parameter_constraints,
         "loss": [StrOptions(set(loss_functions))],
-        "early_stopping": ["boolean"],
-        "validation_fraction": [Interval(Real, 0, 1, closed="neither")],
-        "n_iter_no_change": [Interval(Integral, 1, None, closed="left")],
         "n_jobs": [Integral, None],
         "class_weight": [StrOptions({"balanced"}), dict, None],
     }
@@ -535,6 +541,7 @@ class BaseSGDClassifier(LinearClassifierMixin, BaseSGD, metaclass=ABCMeta):
         *,
         penalty="l2",
         alpha=0.0001,
+        C=1.0,
         l1_ratio=0.15,
         fit_intercept=True,
         max_iter=1000,
@@ -558,6 +565,7 @@ class BaseSGDClassifier(LinearClassifierMixin, BaseSGD, metaclass=ABCMeta):
             loss=loss,
             penalty=penalty,
             alpha=alpha,
+            C=C,
             l1_ratio=l1_ratio,
             fit_intercept=fit_intercept,
             max_iter=max_iter,
@@ -894,7 +902,7 @@ class BaseSGDClassifier(LinearClassifierMixin, BaseSGD, metaclass=ABCMeta):
             X,
             y,
             alpha=self.alpha,
-            C=1.0,
+            C=self.C,
             loss=self.loss,
             learning_rate=self.learning_rate,
             max_iter=1,
@@ -939,7 +947,7 @@ class BaseSGDClassifier(LinearClassifierMixin, BaseSGD, metaclass=ABCMeta):
             X,
             y,
             alpha=self.alpha,
-            C=1.0,
+            C=self.C,
             loss=self.loss,
             learning_rate=self.learning_rate,
             coef_init=coef_init,
@@ -1005,6 +1013,9 @@ class SGDClassifier(BaseSGDClassifier):
         value, the stronger the regularization. Also used to compute the
         learning rate when `learning_rate` is set to 'optimal'.
         Values must be in the range `[0.0, inf)`.
+
+    C : float, default=1.0
+        Maximum step size (regularization). Defaults to 1.0.
 
     l1_ratio : float, default=0.15
         The Elastic Net mixing parameter, with 0 <= l1_ratio <= 1.
@@ -1212,16 +1223,11 @@ class SGDClassifier(BaseSGDClassifier):
 
     _parameter_constraints: dict = {
         **BaseSGDClassifier._parameter_constraints,
-        "penalty": [StrOptions({"l2", "l1", "elasticnet"}), None],
-        "alpha": [Interval(Real, 0, None, closed="left")],
-        "l1_ratio": [Interval(Real, 0, 1, closed="both")],
-        "power_t": [Interval(Real, None, None, closed="neither")],
         "epsilon": [Interval(Real, 0, None, closed="left")],
         "learning_rate": [
             StrOptions({"constant", "optimal", "invscaling", "adaptive"}),
             Hidden(StrOptions({"pa1", "pa2"})),
         ],
-        "eta0": [Interval(Real, 0, None, closed="left")],
     }
 
     def __init__(
@@ -1230,6 +1236,7 @@ class SGDClassifier(BaseSGDClassifier):
         *,
         penalty="l2",
         alpha=0.0001,
+        C=1.0,
         l1_ratio=0.15,
         fit_intercept=True,
         max_iter=1000,
@@ -1253,6 +1260,7 @@ class SGDClassifier(BaseSGDClassifier):
             loss=loss,
             penalty=penalty,
             alpha=alpha,
+            C=C,
             l1_ratio=l1_ratio,
             fit_intercept=fit_intercept,
             max_iter=max_iter,
@@ -1408,9 +1416,6 @@ class BaseSGDRegressor(RegressorMixin, BaseSGD):
     _parameter_constraints: dict = {
         **BaseSGD._parameter_constraints,
         "loss": [StrOptions(set(loss_functions))],
-        "early_stopping": ["boolean"],
-        "validation_fraction": [Interval(Real, 0, 1, closed="neither")],
-        "n_iter_no_change": [Interval(Integral, 1, None, closed="left")],
     }
 
     @abstractmethod
@@ -1420,6 +1425,7 @@ class BaseSGDRegressor(RegressorMixin, BaseSGD):
         *,
         penalty="l2",
         alpha=0.0001,
+        C=1.0,
         l1_ratio=0.15,
         fit_intercept=True,
         max_iter=1000,
@@ -1441,6 +1447,7 @@ class BaseSGDRegressor(RegressorMixin, BaseSGD):
             loss=loss,
             penalty=penalty,
             alpha=alpha,
+            C=C,
             l1_ratio=l1_ratio,
             fit_intercept=fit_intercept,
             max_iter=max_iter,
@@ -1552,7 +1559,7 @@ class BaseSGDRegressor(RegressorMixin, BaseSGD):
             X,
             y,
             self.alpha,
-            C=1.0,
+            C=self.C,
             loss=self.loss,
             learning_rate=self.learning_rate,
             max_iter=1,
@@ -1656,7 +1663,7 @@ class BaseSGDRegressor(RegressorMixin, BaseSGD):
             X,
             y,
             alpha=self.alpha,
-            C=1.0,
+            C=self.C,
             loss=self.loss,
             learning_rate=self.learning_rate,
             coef_init=coef_init,
@@ -1833,6 +1840,8 @@ class SGDRegressor(BaseSGDRegressor):
         value, the stronger the regularization. Also used to compute the
         learning rate when `learning_rate` is set to 'optimal'.
         Values must be in the range `[0.0, inf)`.
+    C : float, default=1.0
+        Maximum step size (regularization). Defaults to 1.0.
 
     l1_ratio : float, default=0.15
         The Elastic Net mixing parameter, with 0 <= l1_ratio <= 1.
@@ -2013,16 +2022,11 @@ class SGDRegressor(BaseSGDRegressor):
 
     _parameter_constraints: dict = {
         **BaseSGDRegressor._parameter_constraints,
-        "penalty": [StrOptions({"l2", "l1", "elasticnet"}), None],
-        "alpha": [Interval(Real, 0, None, closed="left")],
-        "l1_ratio": [Interval(Real, 0, 1, closed="both")],
-        "power_t": [Interval(Real, None, None, closed="neither")],
         "learning_rate": [
             StrOptions({"constant", "optimal", "invscaling", "adaptive"}),
             Hidden(StrOptions({"pa1", "pa2"})),
         ],
         "epsilon": [Interval(Real, 0, None, closed="left")],
-        "eta0": [Interval(Real, 0, None, closed="left")],
     }
 
     def __init__(
@@ -2238,8 +2242,6 @@ class SGDOneClassSVM(BaseSGD, OutlierMixin):
             StrOptions({"constant", "optimal", "invscaling", "adaptive"}),
             Hidden(StrOptions({"pa1", "pa2"})),
         ],
-        "eta0": [Interval(Real, 0, None, closed="left")],
-        "power_t": [Interval(Real, None, None, closed="neither")],
     }
 
     def __init__(
@@ -2480,7 +2482,7 @@ class SGDOneClassSVM(BaseSGD, OutlierMixin):
         return self._partial_fit(
             X,
             alpha,
-            C=1.0,
+            C=self.C,
             loss=self.loss,
             learning_rate=self.learning_rate,
             max_iter=1,
@@ -2589,7 +2591,7 @@ class SGDOneClassSVM(BaseSGD, OutlierMixin):
         self._fit(
             X,
             alpha=alpha,
-            C=1.0,
+            C=self.C,
             loss=self.loss,
             learning_rate=self.learning_rate,
             coef_init=coef_init,
