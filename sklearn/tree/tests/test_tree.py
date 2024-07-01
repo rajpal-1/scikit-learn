@@ -63,7 +63,7 @@ from sklearn.utils.fixes import (
 from sklearn.utils.validation import check_random_state
 
 CLF_CRITERIONS = ("gini", "log_loss")
-REG_CRITERIONS = ("squared_error", "absolute_error", "friedman_mse", "poisson")
+REG_CRITERIONS = ("squared_error", "absolute_error", "friedman_mse", "poisson", "huber")
 
 CLF_TREES = {
     "DecisionTreeClassifier": DecisionTreeClassifier,

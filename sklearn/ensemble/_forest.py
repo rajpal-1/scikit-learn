@@ -1575,8 +1575,8 @@ class RandomForestRegressor(ForestRegressor):
            The default value of ``n_estimators`` changed from 10 to 100
            in 0.22.
 
-    criterion : {"squared_error", "absolute_error", "friedman_mse", "poisson"}, \
-            default="squared_error"
+    criterion : {"squared_error", "absolute_error", "friedman_mse", "poisson", \
+        "huber"}, default="squared_error"
         The function to measure the quality of a split. Supported criteria
         are "squared_error" for the mean squared error, which is equal to
         variance reduction as feature selection criterion and minimizes the L2
@@ -1584,8 +1584,8 @@ class RandomForestRegressor(ForestRegressor):
         mean squared error with Friedman's improvement score for potential
         splits, "absolute_error" for the mean absolute error, which minimizes
         the L1 loss using the median of each terminal node, and "poisson" which
-        uses reduction in Poisson deviance to find splits.
-        Training using "absolute_error" is significantly slower
+        uses reduction in Poisson deviance to find splits. "huber" uses the Huber Loss
+        for robust regression. Training using "absolute_error" is significantly slower
         than when using "squared_error".
 
         .. versionadded:: 0.18
@@ -1593,6 +1593,10 @@ class RandomForestRegressor(ForestRegressor):
 
         .. versionadded:: 1.0
            Poisson criterion.
+
+        .. versionadded:: 1.4
+           Huber criterion.
+
 
     max_depth : int, default=None
         The maximum depth of the tree. If None, then nodes are expanded until
@@ -1743,6 +1747,17 @@ class RandomForestRegressor(ForestRegressor):
 
         .. versionadded:: 1.4
 
+    delta: positive float > 0.0, default=1.0
+        The delta parameter applies to the "huber" criterion and essentially
+        acts as a threshold to balance between "squared_error" and
+        "absolute_error". For errors smaller than delta, the loss is quadratic
+        and sensitive to the magnitude of the error, making it efficient for
+        minimizing small errors. For larger errors, the loss becomes linear,
+        which mitigates the impact of outliers that would otherwise dramatically
+        affect the loss magnitude if "squared_error" were used.
+
+        .. versionadded:: 1.4
+
     Attributes
     ----------
     estimator_ : :class:`~sklearn.tree.DecisionTreeRegressor`
@@ -1869,6 +1884,7 @@ class RandomForestRegressor(ForestRegressor):
         ccp_alpha=0.0,
         max_samples=None,
         monotonic_cst=None,
+        delta=1.0,
     ):
         super().__init__(
             estimator=DecisionTreeRegressor(),
@@ -1885,6 +1901,7 @@ class RandomForestRegressor(ForestRegressor):
                 "random_state",
                 "ccp_alpha",
                 "monotonic_cst",
+                "delta",
             ),
             bootstrap=bootstrap,
             oob_score=oob_score,
@@ -1905,6 +1922,7 @@ class RandomForestRegressor(ForestRegressor):
         self.min_impurity_decrease = min_impurity_decrease
         self.ccp_alpha = ccp_alpha
         self.monotonic_cst = monotonic_cst
+        self.delta = delta
 
 
 class ExtraTreesClassifier(ForestClassifier):
