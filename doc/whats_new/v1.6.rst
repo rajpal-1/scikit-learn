@@ -148,6 +148,10 @@ Changelog
   :pr:`28622` by :user:`Adam Li <adam2392>` and
   :user:`Sérgio Pereira <sergiormpereira>`.
 
+- |Enhancement| :class:`ensemble.VotingClassifier` now supports multilabel-indicator
+  target ``y`` in its `fit`, `predict`, `predict_proba`, and `transform` methods.
+  :pr:`29238` by :user:`Adam Li <adam2392>`.
+
 :mod:`sklearn.impute`
 .....................
 
