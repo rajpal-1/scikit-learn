@@ -5,11 +5,11 @@
 
 import itertools
 import math
-import os
 import warnings
 from functools import wraps
 
 import numpy
+import scipy._lib._array_api
 import scipy.special as special
 
 from .._config import get_config
@@ -86,11 +86,19 @@ def yield_namespace_device_dtype_combinations(include_numpy_namespaces=True):
             yield array_namespace, None, None
 
 
-def _check_array_api_dispatch(array_api_dispatch):
-    """Check that array_api_compat is installed and NumPy version is compatible.
+def _check_array_api_dispatch(array_api_dispatch, misconfigured_scipy="warn"):
+    """Check that required dependencies are installed in new enough versions.
 
-    array_api_compat follows NEP29, which has a higher minimum NumPy version than
-    scikit-learn.
+    We need the array_api_compat package as well as new enough versions of
+    NumPy and SciPy.
+
+    Parameters
+    ----------
+    array_api_dispatch : bool
+        Enable or disable array API checks.
+
+    misconfigured_scipy : str, default="warn"
+        Warn or raise an exception when misconfigured SciPy is detected.
     """
     if array_api_dispatch:
         try:
@@ -108,17 +116,19 @@ def _check_array_api_dispatch(array_api_dispatch):
                 f"NumPy must be {min_numpy_version} or newer to dispatch array using"
                 " the API specification"
             )
-        if os.environ.get("SCIPY_ARRAY_API") != "1":
-            warnings.warn(
-                (
-                    "Some scikit-learn array API features might rely on enabling "
-                    "SciPy's own support for array API to function properly. "
-                    "Please set the SCIPY_ARRAY_API=1 environment variable "
-                    "before importing sklearn or scipy. More details at: "
-                    "https://docs.scipy.org/doc/scipy/dev/api-dev/array_api.html"
-                ),
-                UserWarning,
+
+        if not scipy._lib._array_api.SCIPY_ARRAY_API:
+            message = (
+                "Some scikit-learn array API features rely on enabling "
+                "SciPy's own support for array API to function properly. "
+                "Please set the SCIPY_ARRAY_API=1 environment variable "
+                "before importing sklearn or scipy. More details at: "
+                "https://docs.scipy.org/doc/scipy/dev/api-dev/array_api.html"
             )
+            if misconfigured_scipy == "raise":
+                raise RuntimeError(message)
+            else:
+                warnings.warn(message, UserWarning)
 
 
 def _single_array_device(array):
