@@ -81,7 +81,9 @@ class BaseDistancesReductionDispatcher:
             "hamming",
             *BOOL_METRICS,
         }
-        return sorted(({"sqeuclidean"} | set(METRIC_MAPPING64.keys())) - excluded)
+        return sorted(
+            ({"sqeuclidean", "precomputed"} | set(METRIC_MAPPING64.keys())) - excluded
+        )
 
     @classmethod
     def is_usable_for(cls, X, Y, metric) -> bool:
@@ -105,6 +107,9 @@ class BaseDistancesReductionDispatcher:
         -------
         True if the dispatcher can be used, else False.
         """
+
+        if metric == "precomputed":
+            return True
 
         # FIXME: the current Cython implementation is too slow for a large number of
         # features. We temporarily disable it to fallback on SciPy's implementation.
@@ -169,6 +174,7 @@ class BaseDistancesReductionDispatcher:
         This method is an abstract class method: it has to be implemented
         for all subclasses.
         """
+        
 
 
 class ArgKmin(BaseDistancesReductionDispatcher):
@@ -188,9 +194,10 @@ class ArgKmin(BaseDistancesReductionDispatcher):
     @classmethod
     def compute(
         cls,
-        X,
-        Y,
         k,
+        X = None,
+        Y = None,
+        precomputed_matrix = None,
         metric="euclidean",
         chunk_size=None,
         metric_kwargs=None,
@@ -277,6 +284,17 @@ class ArgKmin(BaseDistancesReductionDispatcher):
         for the concrete implementation are therefore freed when this classmethod
         returns.
         """
+        if X is None and Y is None and precomputed_matrix is None:
+            raise ValueError("Either X and Y or precomputed_matrix must be provided.")
+        elif X is not None and Y is not None and precomputed_matrix is not None: 
+            raise ValueError("Only one of X and Y or precomputed_matrix must be provided.")    
+        elif X is None and Y is not None:
+            raise ValueError("Y should not be provided without X.")
+        elif X is not None and Y is None:
+            raise ValueError("X should not be provided without Y.")  
+    
+    
+    
         if X.dtype == Y.dtype == np.float64:
             return ArgKmin64.compute(
                 X=X,
@@ -421,6 +439,10 @@ class RadiusNeighbors(BaseDistancesReductionDispatcher):
         for the concrete implementation are therefore freed when this classmethod
         returns.
         """
+        # TODO: to maintain RAII, look at the implementation of the compute method
+        # if metric == 'precomputed':
+        #   return PrecomputedDistanceMatrix.precomputed_distance()
+
         if X.dtype == Y.dtype == np.float64:
             return RadiusNeighbors64.compute(
                 X=X,
@@ -578,6 +600,7 @@ class ArgKminClassMode(BaseDistancesReductionDispatcher):
         for the concrete implementation are therefore freed when this classmethod
         returns.
         """
+
         if weights not in {"uniform", "distance"}:
             raise ValueError(
                 "Only the 'uniform' or 'distance' weights options are supported"
